@@ -130,14 +130,35 @@ const onMessage = async (
                     guildId,
                     userId,
                     { delete_message_seconds: 3600 },
-                    { reason: "Triggered honeypot -> softban (kick) 1/2" }
+                    { reason: "Triggered honeypot -> softban (kick) 1/4" }
                 );
                 // await Bun.sleep(150)
                 await api.guilds.unbanUser(
                     guildId,
                     userId,
-                    { reason: "Triggered honeypot -> softban (kick) 2/2" }
+                    { reason: "Triggered honeypot -> softban (kick) 2/4" }
                 );
+
+                // https://github.com/discord/discord-api-docs/issues/8360
+                // sometimes banning doesn't actually remove messages - maybe doing it again later helps
+                try {
+                    // dont wait on this for too long
+                    const timeout = AbortSignal.timeout(15_000);
+                    await Bun.sleep(10_000)
+                    await api.guilds.banUser(
+                        guildId,
+                        userId,
+                        { delete_message_seconds: 3600 },
+                        { reason: "Triggered honeypot -> softban (kick) 3/4", signal: timeout }
+                    );
+                    await api.guilds.unbanUser(
+                        guildId,
+                        userId,
+                        { reason: "Triggered honeypot -> softban (kick) 4/4", signal: timeout }
+                    );
+                } catch (err) {
+                    console.log(`Failed to double softban user (probably not an issue): ${err}`);
+                }
             } else {
                 console.error("Unknown action in honeypot config:", config.action);
                 failed = true;

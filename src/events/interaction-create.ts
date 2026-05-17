@@ -249,7 +249,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             content: `There was a problem setting up the honeypot channel to <#${newConfig.honeypot_channel_id}>. Please check my permissions and try again.\n-# No settings have been changed.`,
                             allowed_mentions: {},
                             flags: MessageFlags.Ephemeral,
-                        });
+                        }).catch(() => null);
                         return;
                     }
                 } else if (prevConfig?.honeypot_msg_id && prevConfig?.honeypot_channel_id) {
@@ -309,10 +309,10 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     try {
                         await channelWarmerExperiment(api, guildId, newConfig.honeypot_channel_id!)
                     } catch (err) {
-                        await api.channels.createMessage(newConfig.log_channel_id || newConfig.honeypot_channel_id, {
+                        api.channels.createMessage(newConfig.log_channel_id || newConfig.honeypot_channel_id, {
                             content: `There was a problem sending a message to the <#${newConfig.honeypot_channel_id}> channel for the "Channel Warmer" experiment. Please check my permissions.`,
                             allowed_mentions: {},
-                        });
+                        }).catch(() => null);
                     }
                 }
                 if (
@@ -322,10 +322,10 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     try {
                         await randomChannelNameExperiment(api, guildId, newConfig.honeypot_channel_id!, newConfig.experiments.includes("random-channel-name-chaos"))
                     } catch (err) {
-                        return await api.channels.createMessage(newConfig.log_channel_id || newConfig.honeypot_channel_id, {
+                        api.channels.createMessage(newConfig.log_channel_id || newConfig.honeypot_channel_id, {
                             content: `There was a problem updating the <#${newConfig.honeypot_channel_id}> channel for the "Random Channel Name" experiment. Please check my permissions.`,
                             allowed_mentions: {},
-                        });
+                        }).catch(() => null);
                     }
                 }
                 return;
