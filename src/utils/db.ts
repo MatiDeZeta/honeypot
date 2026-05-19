@@ -15,9 +15,17 @@ export const db = new SQL(process.env.DATABASE_URL || "sqlite://honeypot.sqlite"
 
 export async function initDb() {
   if (db.options.adapter === "sqlite") {
-    await db.unsafe("PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 30000; PRAGMA wal_autocheckpoint = 1000;")
-      .catch((e) => console.error("Failed to set PRAGMA settings:", e));
+    try {
+      await db`PRAGMA foreign_keys = ON;`;
+      await db`PRAGMA journal_mode = WAL;`;
+      await db`PRAGMA busy_timeout = 5000;`;
+      await db`PRAGMA wal_autocheckpoint = 1000;`;
+      await db`PRAGMA synchronous = NORMAL;`;
+    } catch (err) {
+      console.error("Failed to set PRAGMA settings:", err);
+    }
   }
+
 
   await db`
     CREATE TABLE IF NOT EXISTS honeypot_config (
@@ -28,8 +36,6 @@ export async function initDb() {
       action TEXT NOT NULL DEFAULT 'softban',
       experiments TEXT DEFAULT '[]'
     );
-  `;
-  await db`
     CREATE TABLE IF NOT EXISTS honeypot_events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       guild_id TEXT NOT NULL,
@@ -37,8 +43,6 @@ export async function initDb() {
       timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
     );
-  `;
-  await db`
     CREATE TABLE IF NOT EXISTS honeypot_messages (
       guild_id TEXT PRIMARY KEY,
       warning_message TEXT,
@@ -46,13 +50,11 @@ export async function initDb() {
       log_message TEXT,
       FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
     );
+
+    CREATE INDEX IF NOT EXISTS idx_honeypot_events_guild_id ON honeypot_events(guild_id);
+    CREATE INDEX IF NOT EXISTS idx_honeypot_events_user_id ON honeypot_events(user_id);
+    CREATE INDEX IF NOT EXISTS idx_honeypot_events_speed ON honeypot_events(timestamp, guild_id);
   `;
-  await Promise.all([
-    db`CREATE INDEX IF NOT EXISTS idx_honeypot_events_guild_id ON honeypot_events(guild_id);`,
-    db`CREATE INDEX IF NOT EXISTS idx_honeypot_events_user_id ON honeypot_events(user_id);`,
-    db`CREATE INDEX IF NOT EXISTS idx_honeypot_events_speed ON honeypot_events(timestamp, guild_id);`,
-    db`CREATE INDEX IF NOT EXISTS idx_honeypot_events_ts_guild ON honeypot_events(timestamp, guild_id);`,
-  ]);
 }
 
 export async function getConfig(guild_id: string): Promise<HoneypotConfig | null> {
@@ -196,7 +198,7 @@ export async function getFullStats(): Promise<{
   const metaPromise = db`
     SELECT 
       (SELECT COUNT(*) FROM honeypot_config) AS guilds,
-      (SELECT rowid FROM honeypot_events ORDER BY rowid DESC LIMIT 1) AS moderations;
+      (SELECT COUNT(*) FROM honeypot_events) AS moderations
   `;
 
   const dataPromise = db`
