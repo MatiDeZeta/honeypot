@@ -118,15 +118,41 @@ export const defaultHoneypotUserDMMessage = "## Honeypot Triggered\n\nYou have b
 
 export function logActionMessage(userId: string, honeypotChannelId: string, action: HoneypotConfig["action"], customText?: string | null): RESTPostAPIChannelMessageJSONBody {
   const actionText = pastTenseActionText[action] || '???unknown action???';
+  const text = customText
+    ?.replace(/\{\{user:id\}\}/g, userId)
+    .replace(/\{\{user(:ping|:mention)?\}\}/g, `<@${userId}>`)
+    .replace(/\{\{action(:text)?\}\}/g, actionText)
+    .replace(/\{\{honeypot:channel(:mention|:ping)?\}\}/g, `<#${honeypotChannelId}>`)
+    || `<@${userId}> was ${actionText} for triggering the honeypot in <#${honeypotChannelId}>\n-# User ID: \`${userId}\``
+
+  if (action !== 'ban') {
+    return {
+      allowed_mentions: {},
+      content: text
+    };
+  }
+
   return {
     allowed_mentions: {},
-    content: customText
-      ?.replace(/\{\{user:id\}\}/g, userId)
-      .replace(/\{\{user(:ping|:mention)?\}\}/g, `<@${userId}>`)
-      .replace(/\{\{action(:text)?\}\}/g, actionText)
-      .replace(/\{\{honeypot:channel(:mention|:ping)?\}\}/g, `<#${honeypotChannelId}>`)
-      || `<@${userId}> was ${actionText} for triggering the honeypot in <#${honeypotChannelId}>\n-# User ID: \`${userId}\``,
-  };
+    flags: MessageFlags.IsComponentsV2,
+    components: [
+      {
+        type: ComponentType.Section,
+        components: [
+          {
+            type: ComponentType.TextDisplay,
+            content: text
+          }
+        ],
+        accessory: {
+          type: ComponentType.Button,
+          style: ButtonStyle.Secondary,
+          label: "Unban",
+          custom_id: `unban:${userId}`,
+        }
+      }
+    ]
+  }
 }
 
 export const defaultLogActionMessage = "{{user:mention}} was {{action:text}} for triggering the honeypot in {{honeypot:channel:mention}}\n-# User ID: `{{user:id}}`";

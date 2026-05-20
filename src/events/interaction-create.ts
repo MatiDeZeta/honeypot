@@ -1,4 +1,4 @@
-import { ButtonStyle, ChannelType, ComponentType, GatewayDispatchEvents, InteractionType, MessageFlags, PermissionFlagsBits, SelectMenuDefaultValueType, TextInputStyle, type APIModalInteractionResponseCallbackData, type RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
+import { ButtonStyle, ChannelType, ComponentType, GatewayDispatchEvents, InteractionType, MessageFlags, PermissionFlagsBits, RESTJSONErrorCodes, SelectMenuDefaultValueType, TextInputStyle, type APIModalInteractionResponseCallbackData, type RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
 import type { EventHandler } from "./events";
 import type { HoneypotConfig } from "../utils/db";
 import { honeypotWarningMessage, defaultHoneypotWarningMessage, defaultHoneypotUserDMMessage, defaultLogActionMessage, honeypotUserDMMessage } from "../utils/messages";
@@ -6,6 +6,7 @@ import { channelWarmerExperiment, randomChannelNameExperiment } from "../cron/ex
 import getBadWords from "../utils/bad-words.macro" with { type: "macro" };
 import { CUSTOM_EMOJI, CUSTOM_EMOJI_ID } from "../utils/constants";
 import { getGuildInfo, removeFromDeleteMessageCache, setSubscribedChannelCache } from "../utils/cache";
+import { DiscordAPIError } from "@discordjs/rest";
 
 const hasPermission = (permissions: bigint, permission: bigint) => (permissions & permission) === permission;
 
@@ -640,6 +641,65 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 if (redis) removeFromDeleteMessageCache(interaction.message.channel_id, interaction.message.id, redis).catch(() => null);
             }
 
+            // easy unban button
+            else if (guildId && interaction.type === InteractionType.MessageComponent && interaction.data.custom_id.startsWith("unban:")) {
+                if (!interaction.member?.permissions || !hasPermission(BigInt(interaction.member.permissions), PermissionFlagsBits.BanMembers)) {
+                    await api.interactions.reply(interaction.id, interaction.token, {
+                        content: "You need the Ban Members permission to unban this user.",
+                        allowed_mentions: {},
+                        flags: MessageFlags.Ephemeral,
+                    });
+                    return;
+                }
+                if (!interaction.app_permissions || !hasPermission(BigInt(interaction.app_permissions), PermissionFlagsBits.BanMembers)) {
+                    await api.interactions.reply(interaction.id, interaction.token, {
+                        content: "I need the Ban Members permission to unban this user.",
+                        allowed_mentions: {},
+                        flags: MessageFlags.Ephemeral,
+                    });
+                    return;
+                }
+
+                const messageAge = Date.now() - new Date(interaction.message.timestamp).getTime();
+                if (messageAge > 24 * 60 * 60 * 1000) {
+                    await api.interactions.reply(interaction.id, interaction.token, {
+                        content: "This unban button has expired because it's been more than 24 hours since the user was banned. Please use the regular bans tab in member settings.",
+                        allowed_mentions: {},
+                        flags: MessageFlags.Ephemeral,
+                    });
+                    return;
+                }
+
+                const userIdToUnban = interaction.data.custom_id.slice("unban:".length);
+
+                try {
+                    await api.guilds.unbanUser(guildId, userIdToUnban, { reason: `Unbanned by @${interaction.member.user.username} using the unban button in the honeypot log message` });
+                } catch (err) {
+                    if (err instanceof DiscordAPIError) {
+                        if (err.code === RESTJSONErrorCodes.UnknownBan) {
+                            await api.interactions.reply(interaction.id, interaction.token, {
+                                content: "This user is not currently banned.",
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                        }
+                    }
+
+                    console.log(`Error unbanning user: ${err}`);
+                    await api.interactions.reply(interaction.id, interaction.token, {
+                        content: "There was a problem unbanning the user. Please check my permissions and try again.",
+                        allowed_mentions: {},
+                        flags: MessageFlags.Ephemeral,
+                    });
+                    return;
+                }
+
+                await api.interactions.reply(interaction.id, interaction.token, {
+                    content: `User <@${userIdToUnban}> has been unbanned by <@${interaction.member.user.id}>!`,
+                    allowed_mentions: {},
+                });
+            }
 
             return;
         } catch (err) {

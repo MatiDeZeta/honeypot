@@ -46,7 +46,7 @@ const onMessage = async (
     redis?: Bun.RedisClient
 ) => {
     try {
-        if (!process.env.HAS_PROXY_WS && redis && (await getSubscribedChannelCache(guildId, redis))?.includes(channelId)) return;
+        if (!process.env.HAS_PROXY_WS && redis && !(await getSubscribedChannelCache(guildId, redis))?.includes(channelId)) return;
 
         const config = await db.getConfig(guildId);
         if (!config || !config.action) return;
@@ -143,18 +143,16 @@ const onMessage = async (
                 // sometimes banning doesn't actually remove messages - maybe doing it again later helps
                 (async () => {
                     await Bun.sleep(10_000)
-                    // dont wait on this for too long
-                    const timeout = AbortSignal.timeout(25_000);
                     await api.guilds.banUser(
                         guildId,
                         userId,
                         { delete_message_seconds: 3600 },
-                        { reason: "Triggered honeypot -> softban (kick) 3/4", signal: timeout }
+                        { reason: "Triggered honeypot -> softban (kick) 3/4", signal: AbortSignal.timeout(25_000) }
                     );
                     await api.guilds.unbanUser(
                         guildId,
                         userId,
-                        { reason: "Triggered honeypot -> softban (kick) 4/4", signal: timeout }
+                        { reason: "Triggered honeypot -> softban (kick) 4/4", signal: AbortSignal.timeout(25_000) }
                     );
                 })().catch(err =>
                     console.log(`Failed to double softban user (probably not an issue): ${err}`)
