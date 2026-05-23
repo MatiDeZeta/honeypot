@@ -141,16 +141,23 @@ const onMessage = async (
                     { reason: "Triggered honeypot -> softban (kick) 1/4" }
                 );
                 // await Bun.sleep(150)
-                await api.guilds.unbanUser(
-                    guildId,
-                    userId,
-                    { reason: "Triggered honeypot -> softban (kick) 2/4" }
-                );
+                // await api.guilds.unbanUser(
+                //     guildId,
+                //     userId,
+                //     { reason: "Triggered honeypot -> softban (kick) 2/4" }
+                // );
 
                 // https://github.com/discord/discord-api-docs/issues/8360
                 // sometimes banning doesn't actually remove messages - maybe doing it again later helps
                 (async () => {
                     await Bun.sleep(10_000)
+                    // put it here instead of above because they may join back too early and get kicked again which isn't any good
+                    await api.guilds.unbanUser(
+                        guildId,
+                        userId,
+                        { reason: "Triggered honeypot -> softban (kick) 2/4" }
+                    );
+                    
                     await api.guilds.banUser(
                         guildId,
                         userId,
