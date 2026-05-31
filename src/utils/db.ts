@@ -176,30 +176,19 @@ export async function setHoneypotMessages(guild_id: string, messages: { warning_
 }
 
 
-/** Formats a Date object to a SQL-compatible 'YYYY-MM-DD 00:00:00' string */
-const toSqlTime = (d: Date): string => {
-  const pad = (n: number) => (n < 10 ? '0' + n : n);
-  const yyyy = d.getUTCFullYear();
-  const mm = pad(d.getUTCMonth() + 1);
-  const dd = pad(d.getUTCDate());
-
-  return `${yyyy}-${mm}-${dd} 00:00:00`;
-};
 
 export async function getFullStats() {
-  const now = new Date()
+  const now = new Date();
 
-  const lastMidnight = new Date(now);
-  lastMidnight.setUTCHours(0, 0, 0, 0);
-  const lastMidnightInt = lastMidnight.getTime();
-
-  const sevenDaysAgo = new Date(lastMidnight);
+  const sevenDaysAgo = new Date();
   sevenDaysAgo.setUTCDate(now.getUTCDate() - 7);
-  const sevenDaysAgoInt = sevenDaysAgo.getTime();
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().replace('T', ' ').substring(0, "YYYY-MM-DD HH:mm:ss".length);
 
-  const fourteenDaysAgo = new Date(lastMidnight);
+  const fourteenDaysAgo = new Date();
   fourteenDaysAgo.setUTCDate(now.getUTCDate() - 14);
-  const fourteenDaysAgoInt = fourteenDaysAgo.getTime();
+  const fourteenDaysAgoStr = fourteenDaysAgo.toISOString().substring(0, "YYYY-MM-DD".length) + ' 00:00:00';
+
+  const todayStartStr = now.toISOString().substring(0, "YYYY-MM-DD".length) + ' 00:00:00';
 
   const [[meta], events] = await Promise.all([
     db`
@@ -207,11 +196,10 @@ export async function getFullStats() {
         (SELECT COUNT(*) FROM honeypot_config) AS guilds,
         (SELECT COUNT(*) FROM honeypot_events) AS moderations
     `,
-
     db`
       SELECT timestamp, guild_id
       FROM honeypot_events
-      WHERE timestamp >= ${toSqlTime(fourteenDaysAgo)}
+      WHERE timestamp >= ${fourteenDaysAgoStr}
       ORDER BY timestamp ASC;
     `,
   ]);
@@ -221,21 +209,19 @@ export async function getFullStats() {
   const dailyMap = new Map<string, { moderations: number; guilds: Set<string> }>();
 
   for (const row of events) {
-    const rowDate = new Date(row.timestamp);
-    const ts = rowDate.getTime();
-
+    const ts = row.timestamp;
     // skip events older than 14 days since they are irrelevant too old
-    if (ts < fourteenDaysAgoInt) continue;
+    if (ts < fourteenDaysAgoStr) continue;
 
-    if (ts >= sevenDaysAgoInt) {
+    if (ts >= sevenDaysAgoStr) {
       last7dModerations++;
       if (row.guild_id) last7dGuilds.add(row.guild_id);
     }
 
     // skip todays events for daily stats since the day isnt over yet
-    if (ts >= lastMidnightInt) continue;
+    if (ts >= todayStartStr) continue;
 
-    const date = rowDate.toISOString().slice(0, "YYYY-MM-DD".length);
+    const date = ts.slice(0, "YYYY-MM-DD".length);
 
     let day = dailyMap.get(date);
     if (!day) {
@@ -253,7 +239,6 @@ export async function getFullStats() {
     last7dModerations,
     last7dEngagedGuilds: last7dGuilds.size,
     dailyStats: Array.from(dailyMap.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
       .map(([date, v]) => ({
         date,
         moderations: v.moderations,
