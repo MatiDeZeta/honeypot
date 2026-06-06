@@ -23,16 +23,12 @@ const redis = getRedis();
 const redisPubSub = getRedis();
 const rest = new REST().setToken(token!);
 
-// if this is resumed, then it is ignored and will use the old resume setting
-// but in next reshard it will use the new setting
-const useCompression = process.env.COMPRESS_WEBSOCKETS === "true";
-
 const getShards = async () => (await rest.get(Routes.gatewayBot()) as RESTGetAPIGatewayBotResult).shards;
-const getManager = (shards: number, sessionCache: Map<number, SessionInfo> = new Map(), compression: boolean = false) => new WebSocketManager({
+const getManager = (shards: number, sessionCache: Map<number, SessionInfo> = new Map()) => new WebSocketManager({
     token: token,
     intents: GatewayIntentBits.Guilds | GatewayIntentBits.GuildMessages,
-    rest,
-    compression: compression ? CompressionMethod.ZlibNative : null,
+    fetchGatewayInformation: () => rest.get(Routes.gatewayBot()) as Promise<RESTGetAPIGatewayBotResult>,
+    compression: process.env.COMPRESS_WEBSOCKETS === "true" ? CompressionMethod.ZstdNative : null,
     shardCount: shards,
     initialPresence,
     retrieveSessionInfo: (shardId) => sessionCache.get(shardId) ?? null,
@@ -44,11 +40,11 @@ const managerState = "a" // update this when initial presense or intents changes
 
 const sessionInfoCache: Record<number, Map<number, SessionInfo>> = {};
 async function getSessionStorageFromRedis(shardCount: number, preferCompression = false) {
-    const _raw = await redis.hmget("discord_ws_sessions", `Z_${managerState}_${shardCount}`, `${managerState}_${shardCount}`, shardCount.toString());
-    const raw = preferCompression ? (_raw[0] || _raw[1] || _raw[2]) : (_raw[1] || _raw[2] || _raw[0]);
+    const _raw = await redis.hmget("discord_ws_sessions", `${managerState}_${shardCount}`, `Z_${managerState}_${shardCount}`, shardCount.toString());
+    const raw = _raw[0] || _raw[1] || _raw[2];
     if (raw) {
         const data = JSON.parse(raw) as Record<string, SessionInfo>;
-        return { session: new Map(Object.entries(data).map(([k, v]) => [parseInt(k), v])), compression: _raw[0] === raw };
+        return new Map(Object.entries(data).map(([k, v]) => [parseInt(k), v]));
     }
     return null;
 }
@@ -59,9 +55,8 @@ async function saveSessionStorageToRedis(shardCount: number, sessionStorage: Map
 }
 
 let shardCount = await getShards();
-const initialResumeCache = await getSessionStorageFromRedis(shardCount, useCompression);
-sessionInfoCache[shardCount] = initialResumeCache?.session ?? new Map();
-let manager = getManager(shardCount, sessionInfoCache[shardCount], initialResumeCache?.compression);
+sessionInfoCache[shardCount] = await getSessionStorageFromRedis(shardCount) ?? new Map();
+let manager = getManager(shardCount, sessionInfoCache[shardCount]);
 let isResharding = null as null | [WebSocketManager, number /* shard count */];
 let reshardedId = 0;
 
@@ -94,7 +89,14 @@ const dispatchEvent = async (id: number, event: GatewayDispatchPayload, shardId:
     }
 }
 
+const shardError = (error: Error, shardId: number) => console.error(`[Shard ${shardId}] Error:`, error);
+const shardDebug = (message: string, shardId: number) => console.debug(`[Shard ${shardId}] Debug:`, message);
+const shardResume = (shardId: number) => console.log(`[Shard ${shardId}] Resumed!`);
+
 manager.addListener(WebSocketShardEvents.Dispatch, dispatchEvent.bind(null, reshardedId));
+manager.addListener(WebSocketShardEvents.Error, shardError);
+if (process.env.NODE_ENV === "development") manager.addListener(WebSocketShardEvents.Debug, shardDebug);
+manager.addListener(WebSocketShardEvents.Resumed, shardResume);
 
 let wsConfig = {} as { events?: Set<string>, messageEvents?: { sendBotEvents?: boolean } };
 redisPubSub.subscribe("discord_ws_config", async (message) => {
@@ -160,7 +162,7 @@ const checkForResharding = async (force = false) => {
             }
 
             let shardsConnected = new Set<number>();
-            const newManager = getManager(newShardCount, (sessionInfoCache[newShardCount] ??= new Map()), useCompression);
+            const newManager = getManager(newShardCount, (sessionInfoCache[newShardCount] ??= new Map()));
             isResharding = [newManager, newShardCount];
             function dispatchEvent2(event: GatewayDispatchPayload, shardId: number) {
                 if (event.t === GatewayDispatchEvents.Ready) {
@@ -169,6 +171,9 @@ const checkForResharding = async (force = false) => {
                 }
             }
             newManager.addListener(WebSocketShardEvents.Dispatch, dispatchEvent2);
+            manager.addListener(WebSocketShardEvents.Error, shardError);
+            if (process.env.NODE_ENV === "development") manager.addListener(WebSocketShardEvents.Debug, shardDebug);
+            manager.addListener(WebSocketShardEvents.Resumed, shardResume);
             await newManager.connect();
 
             // wait for all new shards to be ready, then kill old manager
@@ -205,9 +210,3 @@ await manager.connect();
 
 
 setInterval(checkForResharding, 12 * 60 * 60 * 1000); // twice every day
-
-if (initialResumeCache && initialResumeCache.compression !== useCompression) {
-    // wait 20mins to not overload the server with payloads if there was a compression setting change since last session info save
-    Bun.sleep(20 * 60_000)
-        .then(() => checkForResharding(true))
-}

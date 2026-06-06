@@ -26,12 +26,12 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "@discordjs/core": "^2.4.0",
-    "@discordjs/rest": "^2.6.1",
-    "@discordjs/ws": "^2.0.4",
-    "discord-api-types": "^0.38.47"
+    "@discordjs/core": "3.0.0-dev.1779841317-3d6121589",
+    "@discordjs/rest": "3.0.0-dev.1779841317-3d6121589",
+    "@discordjs/ws": "3.0.0-dev.1779841317-3d6121589",
+    "discord-api-types": "^0.38.48"
   },
   "overrides": {
-    "discord-api-types": "^0.38.47"
+    "discord-api-types": "^0.38.48"
   }
 }

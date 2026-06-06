@@ -1,7 +1,7 @@
 import { Client } from "@discordjs/core";
 import { REST } from "@discordjs/rest";
 import { WebSocketManager } from "@discordjs/ws";
-import { GatewayIntentBits, GatewayDispatchEvents } from "discord-api-types/v10";
+import { GatewayIntentBits, GatewayDispatchEvents, type RESTGetAPIGatewayBotResult, Routes } from "discord-api-types/v10";
 import * as db from "./utils/db";
 import eventHandlers from "./events/events";
 import { commandsPayload } from "./utils/commands";
@@ -30,7 +30,7 @@ const rest = new REST({ version: "10" }).setToken(token);
 const gateway = new WebSocketManager({
     token,
     intents: GatewayIntentBits.Guilds | GatewayIntentBits.GuildMessages,
-    rest,
+    fetchGatewayInformation: () => rest.get(Routes.gatewayBot()) as Promise<RESTGetAPIGatewayBotResult>,
     shardCount: null,
     initialPresence,
 });
