@@ -361,12 +361,30 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         if (msgId) {
                             api.channels.deleteMessage(newConfig.honeypot_channel_id, msgId, { reason: "Cleaning up honeypot message after reinvite experiment failure" }).catch(() => null);
                         }
-                        console.log(`Error fetching invite for reinvite experiment: ${err}`);
-                        await api.interactions.reply(interaction.id, interaction.token, {
-                            content: `There was a problem fetching the invite code for the "Reinvite" experiment. Please check my permissions and try again.\n-# No settings have been changed.`,
-                            allowed_mentions: {},
-                            flags: MessageFlags.Ephemeral,
-                        });
+
+                        const errorCode = err instanceof DiscordAPIError ? err.code : null;
+                        if (errorCode === RESTJSONErrorCodes.MaximumNumberOfInvitesReached) {
+                            console.log(styleText("dim", `Error creating invite for reinvite experiment: ${err}`));
+                            await api.interactions.reply(interaction.id, interaction.token, {
+                                content: `There are too many invites in your server to make one for <#${newConfig.honeypot_channel_id}>. Please delete some existing invites and try again.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                        } else if (errorCode === RESTJSONErrorCodes.MissingAccess || errorCode === RESTJSONErrorCodes.MissingPermissions) {
+                            console.log(styleText("dim", `Error creating invite for reinvite experiment: ${err}`));
+                            await api.interactions.reply(interaction.id, interaction.token, {
+                                content: `I don't have permission to create invites in the honeypot channel <#${newConfig.honeypot_channel_id}>. Please make sure I have the Create Invite permission in that channel and try again.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                        } else {
+                            console.log(`Error fetching invite for reinvite experiment: ${err}`);
+                            await api.interactions.reply(interaction.id, interaction.token, {
+                                content: `There was a problem fetching the invite code for the "Reinvite" experiment. Please check my permissions and try again.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                        }
                         return;
                     }
                     const messages = await db.getHoneypotMessages(guildId);
