@@ -32,6 +32,7 @@ const server = Bun.serve({
                     headers: {
                         "Content-Type": "application/json",
                         "Access-Control-Allow-Origin": "*",
+                        "Cache-Control": "public, max-age=30, stale-while-revalidate=600",
                     }
                 });
             }
