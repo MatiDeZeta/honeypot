@@ -13,6 +13,54 @@ export const db = new SQL(process.env.DATABASE_URL || "sqlite://honeypot.sqlite"
   readonly: process.env.DATABASE_READONLY === "true" ? true : undefined,
 });
 
+interface Migration {
+  version: number;
+  name: string;
+  up: (tx: SQL) => Promise<void>;
+}
+
+const migrations: Migration[] = [
+  {
+    version: 1,
+    name: "initial",
+    up: async (tx) => {
+      await tx`
+CREATE TABLE IF NOT EXISTS honeypot_config (
+  guild_id TEXT PRIMARY KEY,
+  honeypot_channel_id TEXT,
+  honeypot_msg_id TEXT,
+  log_channel_id TEXT,
+  action TEXT NOT NULL DEFAULT 'softban',
+  experiments TEXT DEFAULT '[]'
+);
+CREATE TABLE IF NOT EXISTS honeypot_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  guild_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS honeypot_messages (
+  guild_id TEXT PRIMARY KEY,
+  warning_message TEXT,
+  dm_message TEXT,
+  log_message TEXT,
+  FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
+);
+CREATE TABLE IF NOT EXISTS honeypot_reinvite (
+  guild_id TEXT PRIMARY KEY,
+  invite TEXT,
+  FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_honeypot_events_guild_id ON honeypot_events(guild_id);
+CREATE INDEX IF NOT EXISTS idx_honeypot_events_user_id ON honeypot_events(user_id);
+CREATE INDEX IF NOT EXISTS idx_honeypot_events_speed ON honeypot_events(timestamp, guild_id);
+`;
+    },
+  },
+];
+
 export async function initDb() {
   if (db.options.adapter === "sqlite") {
     try {
@@ -26,40 +74,30 @@ export async function initDb() {
     }
   }
 
+  await db`CREATE TABLE IF NOT EXISTS _migrations (
+    version INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    executed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`;
 
-  await db`
-    CREATE TABLE IF NOT EXISTS honeypot_config (
-      guild_id TEXT PRIMARY KEY,
-      honeypot_channel_id TEXT,
-      honeypot_msg_id TEXT,
-      log_channel_id TEXT,
-      action TEXT NOT NULL DEFAULT 'softban',
-      experiments TEXT DEFAULT '[]'
-    );
-    CREATE TABLE IF NOT EXISTS honeypot_events (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      guild_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
-    );
-    CREATE TABLE IF NOT EXISTS honeypot_messages (
-      guild_id TEXT PRIMARY KEY,
-      warning_message TEXT,
-      dm_message TEXT,
-      log_message TEXT,
-      FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
-    );
-    CREATE TABLE IF NOT EXISTS honeypot_reinvite (
-      guild_id TEXT PRIMARY KEY,
-      invite TEXT,
-      FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
-    );
+  const applied: { version: number }[] = await db`SELECT version FROM _migrations ORDER BY version ASC`.catch(() => [])
+  const appliedSet = new Set(applied.map(r => r.version));
 
-    CREATE INDEX IF NOT EXISTS idx_honeypot_events_guild_id ON honeypot_events(guild_id);
-    CREATE INDEX IF NOT EXISTS idx_honeypot_events_user_id ON honeypot_events(user_id);
-    CREATE INDEX IF NOT EXISTS idx_honeypot_events_speed ON honeypot_events(timestamp, guild_id);
-  `;
+  for (const m of migrations) {
+    if (appliedSet.has(m.version)) continue;
+    try {
+      await db.transaction(async (tx) => {
+        await m.up(tx);
+        await tx`INSERT INTO _migrations (version, name) VALUES (${m.version}, ${m.name})`;
+      });
+      if (appliedSet.size > 0) {
+        console.log(`[db migrate] ${m.version}: ${m.name} applied`);
+      }
+    } catch (err) {
+      console.error(`[db migrate] ${m.version}: ${m.name} failed:`, err);
+      throw err;
+    }
+  }
 }
 
 export async function getConfig(guild_id: string): Promise<HoneypotConfig | null> {
