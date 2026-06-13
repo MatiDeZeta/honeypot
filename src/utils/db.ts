@@ -29,11 +29,14 @@ export type ConfigWithChannels = {
   channels: HoneypotChannel[];
 };
 
-export const db = new SQL(process.env.DATABASE_URL || "sqlite://honeypot.sqlite", {
-  readonly: process.env.DATABASE_READONLY === "true" ? true : undefined,
-  bigint: true, // bigits as bigint (postgres/mysql)
-  safeIntegers: true, // numbers as bigint (sqlite)
-});
+export const db = new SQL(process.env.DATABASE_URL || "sqlite://honeypot.sqlite",
+  process.env.DATABASE_READONLY === "1" ? {
+    readonly: true,
+  } : {
+    bigint: true, // bigits as bigint (postgres/mysql)
+    safeIntegers: true, // numbers as bigint (sqlite)
+  }
+);
 
 interface Migration {
   version: number;
@@ -112,7 +115,7 @@ export async function initDb() {
   }
 
   // it'll fail in migrating anyway
-  if (process.env.DATABASE_READONLY === "true") return;
+  if (process.env.DATABASE_READONLY === "1") return;
 
   await db`CREATE TABLE IF NOT EXISTS _migrations (
     version INTEGER PRIMARY KEY,
@@ -328,7 +331,6 @@ export async function setReinvite(guild_id: string, invite: string | false) {
   `;
 }
 
-let statsDb = null as SQL | null;
 export async function getFullStats(): Promise<{
   guilds: number;
   moderations: number;
@@ -336,12 +338,6 @@ export async function getFullStats(): Promise<{
   last7dEngagedGuilds: number;
   dailyStats: { date: string; moderations: number; engagedGuilds: number; }[];
 }> {
-  statsDb ||= new SQL("", {
-    ...db.options,
-    readonly: true,
-    bigint: false,
-    safeIntegers: false,
-  });
 
   const now = new Date();
 
@@ -356,12 +352,12 @@ export async function getFullStats(): Promise<{
   const todayStartStr = now.toISOString().substring(0, "YYYY-MM-DD".length) + ' 00:00:00';
 
   const [[meta], events] = await Promise.all([
-    statsDb`
+    db`
       SELECT
         (SELECT COUNT(*) FROM honeypot_config) AS guilds,
         (SELECT COUNT(*) FROM honeypot_events) AS moderations
     `,
-    statsDb`
+    db`
       SELECT timestamp, guild_id
       FROM honeypot_events
       WHERE timestamp >= ${fourteenDaysAgoStr}

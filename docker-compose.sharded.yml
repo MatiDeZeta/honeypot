@@ -84,7 +84,7 @@ services:
        - redis
      environment:
        DATABASE_URL: ${DATABASE_URL:-sqlite:///data/honeypot.sqlite}
-       DATABASE_READONLY: "true"
+       DATABASE_READONLY: 1
        NODE_ENV: production
        FORCE_COLOR: 1
        REDIS_URL: redis+unix:///redis/redis.sock
