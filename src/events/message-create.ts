@@ -81,7 +81,8 @@ const onMessage = async (
 
         // avoid double moderation if many messages are sent (easy if many honeypot channels)
         if (redis) {
-            if (await getIsAlreadyModerating(guildId, userId, redis)) return console.log("Already moderating user, skipping...");
+            if (await getIsAlreadyModerating(guildId, userId, redis))
+                return console.log(styleText("dim", "Already moderating user, skipping..."));
             setIsAlreadyModerating(guildId, userId, redis);
         }
 

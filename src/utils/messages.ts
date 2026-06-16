@@ -106,7 +106,7 @@ export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildNam
       },
       isExample ? {
         type: ComponentType.TextDisplay,
-        content: `-# This is an example message so you can see your members will see`
+        content: `-# This is an example message so you can see what your members will see`
       } : customText ? {
         type: ComponentType.TextDisplay,
         content: `-# This is a custom message from the owners of "${guildName}".`
