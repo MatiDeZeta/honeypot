@@ -90,9 +90,7 @@ CREATE TABLE IF NOT EXISTS honeypot_reinvite (
   FOREIGN KEY (guild_id) REFERENCES honeypot_config(guild_id) ON DELETE CASCADE
 );
 
-CREATE INDEX IF NOT EXISTS idx_honeypot_channels_channel_id ON honeypot_channels(channel_id);
 CREATE INDEX IF NOT EXISTS idx_honeypot_channels_guild_id ON honeypot_channels(guild_id);
-CREATE INDEX IF NOT EXISTS idx_honeypot_events_guild_id ON honeypot_events(guild_id);
 CREATE INDEX IF NOT EXISTS idx_honeypot_events_user_id ON honeypot_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_honeypot_events_channel_id ON honeypot_events(guild_id, channel_id);
 CREATE INDEX IF NOT EXISTS idx_honeypot_events_stats ON honeypot_events(timestamp, guild_id);
