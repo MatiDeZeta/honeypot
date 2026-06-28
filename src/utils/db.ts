@@ -14,7 +14,8 @@ export type HoneypotConfig = {
     "reinvite" |
     "timeout-first" |
     "only-recent-delete" |
-    "many-honeypots"
+    "many-honeypots" |
+    "ensure-msg-delete"
   )[]
 };
 
@@ -277,6 +278,11 @@ export async function getGuildStats(guild_id: string): Promise<{ channel_id: str
     channel_id: row.channel_id?.toString() || null,
     moderatedCount: Number(row.moderated_count)
   }));
+}
+
+export async function getGuildHasHoneypotHistory(guild_id: string): Promise<boolean> {
+  const [row] = await db`SELECT EXISTS (SELECT 1 FROM honeypot_events WHERE guild_id = ${guild_id} LIMIT 1 OFFSET 2) as has_history;`;
+  return Boolean(row.has_history);
 }
 
 export async function getUserModeratedCount(user_id: string): Promise<number> {
