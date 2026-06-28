@@ -1,8 +1,21 @@
 import type { API, RESTGetAPIGuildRoleMemberCountsResult, Snowflake } from "@discordjs/core";
 import type { API as API2 } from "@discordjs/core/http-only";
-import { makeURLSearchParams, type RequestData } from "@discordjs/rest";
+import { type RequestData } from "@discordjs/rest";
 import { Routes } from "discord-api-types/v10";
 import type { RESTGetAPIGuildMessagesSearchQuery, RESTGetAPIGuildMessagesSearchResult } from "discord-api-types/v10";
+
+function makeSearchParams(query: RESTGetAPIGuildMessagesSearchQuery): URLSearchParams {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(query)) {
+        if (value === undefined || value === null) continue;
+        if (Array.isArray(value)) {
+            for (const v of value) params.append(key, v);
+        } else {
+            params.append(key, String(value));
+        }
+    }
+    return params;
+}
 
 /**
  * Fetches role member counts for a guild.
@@ -35,7 +48,9 @@ export async function searchForMessages(
 ) {
     return api.rest.get(Routes.guildMessagesSearch(guildId), {
         auth,
-        query: makeURLSearchParams(query),
+        query: makeSearchParams(query),
         signal,
     }) as Promise<RESTGetAPIGuildMessagesSearchResult>;
 }
+
+
