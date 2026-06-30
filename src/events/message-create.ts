@@ -12,6 +12,7 @@ const handler: EventHandler<GatewayDispatchEvents.MessageCreate> = {
     event: GatewayDispatchEvents.MessageCreate,
     handler: async ({ data: message, api, applicationId, redis, db }) => {
         if (!message.guild_id) return;
+
         // if a user used a slash command, attribute it to the user instead of ignoring as its a bot msg
         if (message.interaction_metadata && message.author.id !== applicationId) {
             return await onMessage({
@@ -26,6 +27,7 @@ const handler: EventHandler<GatewayDispatchEvents.MessageCreate> = {
 
         // if it's a normal message, only trigger if it's not a bot (to avoid spam as we trust actual bots more)
         if (!message.author.bot && !message.author.system) {
+            if (ignoredMessageTypes.has(message.type)) return;
             return await onMessage({
                 userId: message.author.id,
                 channelId: message.channel_id,
@@ -137,12 +139,15 @@ const onMessage = async (
                         guild_id: guildId,
                     }
                 }).catch(err => {
-                    if (err instanceof DiscordAPIError && (err.code === 160009 /** undocumented error code */)) {
+                    const discordApiError = err instanceof DiscordAPIError ? err : null;
+                    if (discordApiError && discordApiError.code === 160009 /** undocumented error code */) {
                         api.channels.createMessage(config.log_channel_id!, {
                             content: `Would forward https://discord.com/channels/${guildId}/${channelId}/${messageId}, but the bot doesn't have permission to Read Message History in that channel.`,
                             allowed_mentions: {},
                         }).catch(err => console.error(styleText("dim", `Failed to send message about missing permissions to forward to log channel: ${err}`)));
                         console.log(styleText("dim", `Failed to forward message to log channel ${config.action}: ${err}`));
+                    } else if (discordApiError && discordApiError.message.includes("MESSAGE_REFERENCE_UNKNOWN_MESSAGE")) {
+                        console.log(styleText("dim", `Failed to forward message to log channel ${config.action}: ${err.toString().replace("\n", "; ")}`));
                     } else {
                         console.log(`Failed to forward message to log channel: ${err}`);
                     }
@@ -398,6 +403,21 @@ const onMessage = async (
         console.error(`Error with MessageCreate handler: ${err}`);
     }
 };
+
+// mostly not their decision to post here as a system notification
+// mainly the ones that are send on behalf of user to the system channel
+const ignoredMessageTypes = new Set([
+    MessageType.UserJoin,
+    MessageType.ChannelPinnedMessage,
+    MessageType.GuildBoost,
+    MessageType.GuildBoostTier1,
+    MessageType.GuildBoostTier2,
+    MessageType.GuildBoostTier3,
+    MessageType.ChannelFollowAdd,
+    MessageType.PollResult,
+    MessageType.PurchaseNotification,
+    MessageType.AutoModerationAction,
+]);
 
 
 export default handler;

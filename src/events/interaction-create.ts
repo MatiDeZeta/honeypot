@@ -54,7 +54,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     { label: "No DM", value: "no-dm", description: "Don’t DM the user that they triggered the honeypot", default: config.experiments.includes("no-dm") },
                     { label: "Random Channel Name (Chaos)", value: "random-channel-name-chaos", description: "Randomise the honeypot channel name with random characters (every day)", default: config.experiments.includes("random-channel-name-chaos") },
                     { label: "Many Honeypots", value: "many-honeypots", description: "Ability to create multiple honeypot channels - must submit modal and re-run /honeypot to set them", default: config.experiments.includes("many-honeypots") },
-                    HAS_MESSAGE_INTENT && hasHoneypotHistory && { label: "Ensure Message Deletion (decently risky)", value: "ensure-msg-delete", description: "Search & delete leftover messages from moderated users 2min after moderation.", default: config.experiments.includes("ensure-msg-delete") },
+                    HAS_MESSAGE_INTENT && hasHoneypotHistory && { label: "Ensure Message Deletion (only use if needed)", value: "ensure-msg-delete", description: "Search & delete leftover messages from moderated users 2min after moderation.", default: config.experiments.includes("ensure-msg-delete") },
                 ] satisfies (APISelectMenuOption | false)[]).filter(e => !!e);
 
                 const modal: APIModalInteractionResponseCallbackData = {
