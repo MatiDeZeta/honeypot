@@ -285,8 +285,28 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             return;
                         }
                     }
-
                     // if any other actions added in future, add their equivalent permission checks here
+
+
+                    // some experiments are mutually exclusive, so check for that
+                    if (newConfig.experiments.includes("no-dm") && newConfig.experiments.includes("reinvite")) {
+                        // reinvite is useless without dming them
+                        await interactionReply({
+                            content: `The "No DM" and "Reinvite" experiments are mutually exclusive.\n-# No settings have been changed.`,
+                            allowed_mentions: {},
+                            flags: MessageFlags.Ephemeral,
+                        });
+                        return;
+                    }
+                    if (newConfig.experiments.includes("forward-message") && newConfig.experiments.includes("ensure-msg-delete")) {
+                        // it tries to delete as early as possible, so its practically impossible to forward
+                        await interactionReply({
+                            content: `The "Forward Message" and "Ensure Message Delete" experiments are mutually exclusive.\n-# No settings have been changed.`,
+                            allowed_mentions: {},
+                            flags: MessageFlags.Ephemeral,
+                        });
+                        return;
+                    }
                 }
 
                 // if honeypot channel changed or current honeypot msg is invalid, create new honeypot message
