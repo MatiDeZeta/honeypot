@@ -19,7 +19,8 @@ const handler: EventHandler<GatewayDispatchEvents.MessageCreate> = {
                 channelId: message.channel_id,
                 guildId: message.guild_id,
                 messageId: message.id,
-                msgType: message.type
+                msgType: message.type,
+                userRoles: message.interaction?.member?.roles || []
             }, api, db, redis);
         }
 
@@ -30,7 +31,8 @@ const handler: EventHandler<GatewayDispatchEvents.MessageCreate> = {
                 channelId: message.channel_id,
                 guildId: message.guild_id,
                 messageId: message.id,
-                msgType: message.type
+                msgType: message.type,
+                userRoles: message.member?.roles || []
             }, api, db, redis);
         }
 
@@ -48,7 +50,7 @@ const handler: EventHandler<GatewayDispatchEvents.MessageCreate> = {
 };
 
 const onMessage = async (
-    { userId, channelId, guildId, messageId, threadId, msgType }: { userId: string, channelId: string, guildId: string, messageId?: string, threadId?: string, msgType?: MessageType },
+    { userId, channelId, guildId, messageId, threadId, msgType, userRoles }: { userId: string, channelId: string, guildId: string, messageId?: string, threadId?: string, msgType?: MessageType, userRoles: string[] },
     api: API | API2,
     db: typeof import("../utils/db"),
     redis?: Bun.RedisClient
@@ -167,11 +169,11 @@ const onMessage = async (
         const customMessages = await db.getHoneypotMessages(guildId);
 
         // should DM user first before banning so that discord has less reason to block it
-        let isOwner = false;
+        let permissionSkip = false as "owner" | "admin" | false;
         const dmMessage: Promise<APIMessage | null> = (async () => {
             try {
                 const guild = await getGuildInfo(api, guildId, preActionAbort, redis).catch(() => null);
-                isOwner = guild?.ownerId === userId;
+                permissionSkip = guild?.ownerId === userId ? "owner" : guild?.adminRoles?.some(role => userRoles.includes(role)) ? "admin" : false;
                 if (!config.experiments.includes("no-dm")) {
                     let dmChannel = redis && await getDmChannelCache(userId, redis);
                     if (!dmChannel) {
@@ -186,7 +188,7 @@ const onMessage = async (
                         guild?.isDiscoverable ? `https://discord.com/servers/${guildId}` : undefined,
                         link,
                         reinviteCode ? `https://discord.gg/${reinviteCode}` : null,
-                        isOwner,
+                        permissionSkip !== false,
                         customMessages?.dm_message
                     );
                     return await api.channels.createMessage(dmChannel, dmContent, { signal: preActionAbort });
@@ -208,8 +210,8 @@ const onMessage = async (
         // also if timeout fails, we don't want to wait too long before banning
         await Promise.race([preActionPromise, dmMessage, timeoutPromise, forwardPromise].filter(p => !!p));
 
-        let failed: boolean | "permissions" | "owner" | "unban" = false;
-        if (!isOwner) try {
+        let failed: boolean | "permissions" | "admin" | "unban" = false;
+        if (!permissionSkip) try {
             // normally 1hr, but with the option only do last 15min
             const deleteMessageSeconds = config.experiments.includes("only-recent-delete")
                 ? 900 // 15min
@@ -288,9 +290,9 @@ const onMessage = async (
             }
         } else {
             // server owner cannot be banned/kicked by anyone
-            failed = "owner";
+            failed = "admin";
         };
-        if (!failed && !isOwner) {
+        if (!failed && !permissionSkip) {
             await db.logModerateEvent(guildId, userId, matchedChannel.channel_id);
             redis?.publish("moderate_event", "+1");
         }
@@ -308,14 +310,14 @@ const onMessage = async (
             // } satisfies RESTAPIMessageReference : undefined;
             const reply = undefined as RESTAPIMessageReference | undefined;
 
-            if (config.log_channel_id && !failed && !isOwner) {
+            if (config.log_channel_id && !failed && !permissionSkip) {
                 await api.channels.createMessage(config.log_channel_id, {
                     ...logActionMessage(userId, matchedChannel.channel_id, config.action, customMessages?.log_message, moderatedCount),
                     allowed_mentions: { users: [userId] },
                 });
-            } else if (isOwner) {
+            } else if (permissionSkip) {
                 await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                    content: `⚠️ User <@${userId}> triggered the honeypot, but they are the **server owner** so I cannot ${config.action} them.\n-# In anycase **ensure my role is higher** than people’s highest role and that I have **ban members** permission so I can ${config.action} for actual cases.`,
+                    content: `⚠️ User <@${userId}> triggered the honeypot, but they are the **${permissionSkip === "owner" ? "server owner" : "server admin"}** so I cannot ${config.action} them.\n-# In anycase **ensure my role is higher** than people’s highest role and that I have **ban members** permission so I can ${config.action} for actual cases.`,
                     allowed_mentions: { users: [userId] },
                     message_reference: reply
                 });

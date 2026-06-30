@@ -1,31 +1,59 @@
 import type { API } from "@discordjs/core";
 import type { API as API2 } from "@discordjs/core/http-only";
-import { GuildFeature } from "discord-api-types/v10";
+import { GuildFeature, PermissionFlagsBits, type APIGuild } from "discord-api-types/v10";
+import { base64ToSlowflake, hasPermission, slowflakeToBase64 } from "./tools";
 
 const yearSeconds = 365 * 24 * 60 * 60;
 
-interface GuildInfo { name: string, ownerId: string, isDiscoverable?: boolean; }
+interface GuildInfo { name: string, ownerId: string, isDiscoverable?: boolean; adminRoles?: string[]; }
 const guildCache = new Map<string, GuildInfo>();
 
-export const getGuildInfo = async (api: API | API2, guildId: string, signal?: AbortSignal, redis?: Bun.RedisClient): Promise<GuildInfo> => {
+const getApiGuildInfo = (guild: APIGuild): GuildInfo => {
+  const adminRoles = guild.roles.filter(r =>
+    !r.managed &&
+    hasPermission(BigInt(r.permissions), PermissionFlagsBits.Administrator)
+  ).map(r => r.id);
+  const isDiscoverable = guild.features.includes(GuildFeature.Discoverable);
+  return { name: guild.name, ownerId: guild.owner_id, isDiscoverable, adminRoles };
+}
+
+export const getGuildInfo = async <fetch extends boolean = true>
+  (api: API | API2, guildId: string, signal: fetch extends true ? AbortSignal | undefined : "no-fetch", redis?: Bun.RedisClient)
+  : Promise<fetch extends true ? GuildInfo : GuildInfo | null> => {
   if (redis) {
     const cached = await redis.hget("guild_info", guildId);
-    if (cached) return JSON.parse(cached);
-    const guild = await api.guilds.get(guildId, undefined, { signal });
-    const info: GuildInfo = { name: guild.name, ownerId: guild.owner_id, isDiscoverable: guild.features.includes(GuildFeature.Discoverable) ? true : undefined };
-    await redis.hsetex("guild_info", "EX", yearSeconds, "FIELDS", 1, guildId, JSON.stringify(info));
-    return info;
-  } else {
-    if (guildCache.has(guildId)) return guildCache.get(guildId)!;
-    const guild = await api.guilds.get(guildId, undefined, { signal });
-    const info: GuildInfo = { name: guild.name, ownerId: guild.owner_id, isDiscoverable: guild.features.includes(GuildFeature.Discoverable) ? true : undefined };
-    guildCache.set(guildId, info);
-    return info;
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      // old format just return as is
+      if ('name' in parsed) return parsed;
+
+      return {
+        name: parsed.n,
+        ownerId: parsed.o ? base64ToSlowflake(parsed.o).toString() : "",
+        isDiscoverable: parsed.d === 1,
+        adminRoles: parsed.a?.length ? parsed.a.split("|").map(base64ToSlowflake).map((b: bigint) => b.toString()) : undefined
+      }
+    }
+  } else if (guildCache.has(guildId)) {
+    return guildCache.get(guildId)!;
   }
+
+  if (signal === "no-fetch") return null as any;
+
+  const guild = await api.guilds.get(guildId, undefined, { signal });
+  const info = setGuildInfoCache(guildId, guild, redis);
+  return info;
 };
-export const setGuildInfoCache = (guildId: string, info: GuildInfo, redis?: Bun.RedisClient) => {
+
+export const setGuildInfoCache = (guildId: string, guild: APIGuild, redis?: Bun.RedisClient) => {
+  const info = getApiGuildInfo(guild);
   if (redis) {
-    const cacheStr = JSON.stringify({ name: info.name, ownerId: info.ownerId, isDiscoverable: info.isDiscoverable ? true : undefined });
+    const cacheStr = JSON.stringify({
+      n: info.name,
+      o: slowflakeToBase64(info.ownerId),
+      d: info.isDiscoverable ? 1 : undefined,
+      a: info.adminRoles?.length ? info.adminRoles.map(slowflakeToBase64).join("|") : undefined
+    });
     redis.hsetex("guild_info", "EX", yearSeconds, "FIELDS", 1, guildId, cacheStr);
   } else {
     guildCache.set(guildId, info);

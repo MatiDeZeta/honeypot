@@ -19,6 +19,7 @@ export type EventHandler<K extends GatewayDispatchEvents = GatewayDispatchEvents
 import guildCreate from "./guild-create";
 import guildDelete from "./guild-delete";
 import guildUpdate from "./guild-update";
+import guildRoleUpdate from "./guild-role-update";
 import channelDelete from "./channel-delete";
 import messageDelete from "./message-delete";
 import messageDeleteBulk from "./message-delete-bulk";
@@ -29,6 +30,7 @@ export const eventHandlers = [
     guildCreate,
     guildDelete,
     guildUpdate,
+    guildRoleUpdate,
     channelDelete,
     messageDelete,
     messageDeleteBulk,

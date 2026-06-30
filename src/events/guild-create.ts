@@ -1,4 +1,4 @@
-import { ButtonStyle, ChannelType, GatewayDispatchEvents, MessageFlags, ComponentType, type GatewayGuildCreateDispatchData, type APIRole, PermissionFlagsBits, RESTJSONErrorCodes, GuildFeature, OverwriteType } from "discord-api-types/v10";
+import { ButtonStyle, ChannelType, GatewayDispatchEvents, MessageFlags, ComponentType, type GatewayGuildCreateDispatchData, PermissionFlagsBits, RESTJSONErrorCodes, OverwriteType } from "discord-api-types/v10";
 import type { EventHandler } from "./events";
 import type { API } from "@discordjs/core";
 import type { API as API2 } from "@discordjs/core/http-only";
@@ -18,7 +18,7 @@ const handler: EventHandler<GatewayDispatchEvents.GuildCreate> = {
         if (guild.unavailable) return;
 
         try {
-            setGuildInfoCache(guild.id, { name: guild.name, ownerId: guild.owner_id, isDiscoverable: guild.features.includes(GuildFeature.Discoverable) }, redis);
+            setGuildInfoCache(guild.id, guild, redis);
 
             // if we already have config for this server, don't try to recreate (every bot resart creates this event) 
             let config = await db.getConfig(guild.id);

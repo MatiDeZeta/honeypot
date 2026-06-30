@@ -64,7 +64,7 @@ const pastTenseActionText = {
   softban: 'kicked',
   disabled: '???it is disabled???'
 } as const
-export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildName: string, discoverableLink: string | undefined, link: string, reinviteUrl: string | null, isOwner = false, customText?: string | null, isExample = false): RESTPostAPIChannelMessageJSONBody {
+export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildName: string, discoverableLink: string | undefined, link: string, reinviteUrl: string | null, isAdmin = false, customText?: string | null, isExample = false): RESTPostAPIChannelMessageJSONBody {
   const actionText = pastTenseActionText[action] || '???unknown action???';
   return {
     flags: MessageFlags.IsComponentsV2,
@@ -110,9 +110,9 @@ export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildNam
       } : customText ? {
         type: ComponentType.TextDisplay,
         content: `-# This is a custom message from the owners of "${guildName}".`
-      } : isOwner ? {
+      } : isAdmin ? {
         type: ComponentType.TextDisplay,
-        content: `-# This is an example message: as the owner you can’t be ${actionText}.`
+        content: `-# This is an example message: as an admin you can’t be ${actionText}.`
       } : null,
     ].filter(Boolean) as any[],
   };
