@@ -203,9 +203,10 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 // pretty reasonable requests to ensure user can even do said actions
                 {
                     const requiredPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels;
-                    for (const id of addedChannels) {
+                    for (const id of selectedChannelIds) {
                         const resolvedChannel = interaction.data.resolved?.channels?.[id];
-                        if (!hasPermission(BigInt(resolvedChannel?.permissions || "0"), requiredPerms)) {
+                        const userPerms = BigInt(resolvedChannel?.permissions || "0");
+                        if (!hasPermission(userPerms, requiredPerms)) {
                             await interactionReply({
                                 content: `You don't have enough permissions to set the honeypot channel to <#${id}>. You need the following permissions in that channel: Send Messages, View Channel, Manage Messages, Manage Channels.\n-# No settings have been changed.`,
                                 allowed_mentions: {},
@@ -213,17 +214,64 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             });
                             return;
                         }
-                    }
 
+                        // @ts-expect-error - should be documented soon:tm:
+                        const appPerms = BigInt(resolvedChannel?.app_permissions || "0");
+                        if (!hasPermission(appPerms, PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages)) {
+                            await interactionReply({
+                                content: `I don't have enough permissions to set the honeypot channel to <#${id}>. I need the following permissions in that channel: View Channel, Send Messages.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                        }
+
+                        if ((newConfig.experiments.includes("random-channel-name") || newConfig.experiments.includes("random-channel-name-chaos")) && !hasPermission(appPerms, PermissionFlagsBits.ManageChannels)) {
+                            await interactionReply({
+                                content: `I need the Manage Channels permission in <#${id}> to enable the "Random Channel Name" experiment.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                        }
+
+                        if (newConfig.experiments.includes("forward-message") && !hasPermission(appPerms, PermissionFlagsBits.ReadMessageHistory)) {
+                            await interactionReply({
+                                content: `I need the Read Message History permission in <#${id}> to enable the "Forward Message" experiment.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                        }
+
+                        if (newConfig.experiments.includes("ensure-msg-delete") && !hasPermission(appPerms, PermissionFlagsBits.ManageMessages)) {
+                            await interactionReply({
+                                content: `I need the Manage Messages permission in <#${id}> (and other channels) to enable the "Ensure Message Delete" experiment.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                        }
+                    }
                     const resolvedLogChannel = newConfig.log_channel_id ? interaction.data.resolved?.channels?.[newConfig.log_channel_id] : null;
                     const logRequiredPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel;
-                    if (logChanged && newConfig.log_channel_id && !hasPermission(BigInt(resolvedLogChannel?.permissions || "0"), logRequiredPerms)) {
-                        await interactionReply({
-                            content: `You don’t have enough permissions to set the log channel to <#${newConfig.log_channel_id}>. You need the following permissions in that channel: Send Messages, View Channel.\n-# No settings have been changed.`,
-                            allowed_mentions: {},
-                            flags: MessageFlags.Ephemeral,
-                        });
-                        return;
+                    if (logChanged && newConfig.log_channel_id) {
+                        if (!hasPermission(BigInt(resolvedLogChannel?.permissions || "0"), logRequiredPerms)) {
+                            await interactionReply({
+                                content: `You don’t have enough permissions to set the log channel to <#${newConfig.log_channel_id}>. You need the following permissions in that channel: Send Messages, View Channel.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                            // @ts-expect-error - should be documented soon:tm:
+                        } else if (!hasPermission(BigInt(resolvedLogChannel?.app_permissions || "0"), logRequiredPerms)) {
+                            await interactionReply({
+                                content: `I don’t have enough permissions to set the log channel to <#${newConfig.log_channel_id}>. I need the following permissions in that channel: Send Messages, View Channel.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                        }
                     }
 
                     const memberPerms = interaction.member?.permissions
@@ -255,15 +303,16 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             });
                             return;
                         }
-                        // // issue here is app_permissions is based on the channel it was ran from, so this can have reliability issues with per channel overrides
-                        // if (!hasPermission(BigInt(interaction.app_permissions), PermissionFlagsBits.CreateInstantInvite)) {
-                        //     await interactionReply({
-                        //         content: `I need the Create Invite permission to enable the "Reinvite" experiment.\n-# No settings have been changed.`,
-                        //         allowed_mentions: {},
-                        //         flags: MessageFlags.Ephemeral,
-                        //     });
-                        //     return;
-                        // }
+                        // @ts-expect-error - should be documented soon:tm:
+                        const inviteAppPerms = BigInt(inviteChannel?.app_permissions || "0");
+                        if (inviteChannel && !hasPermission(inviteAppPerms, PermissionFlagsBits.CreateInstantInvite)) {
+                            await interactionReply({
+                                content: `I need the Create Invite permission in <#${inviteChannel.id}> to enable the "Reinvite" experiment.\n-# No settings have been changed.`,
+                                allowed_mentions: {},
+                                flags: MessageFlags.Ephemeral,
+                            });
+                            return;
+                        }
                     }
 
                     if (newConfig.experiments.includes("timeout-first")) {
