@@ -125,7 +125,7 @@ const onMessage = async (
         }
 
         const preActionPromise = Bun.sleep(2000)
-        const preActionAbort = AbortSignal.timeout(3500);
+        const preActionAbort = new AbortController();
 
         let forwardPromise = null as null | Promise<any>;
         if (HAS_MESSAGE_INTENT && config.experiments.includes("forward-message") && config.log_channel_id && messageId && msgType !== undefined) {
@@ -139,7 +139,7 @@ const onMessage = async (
                         message_id: messageId,
                         guild_id: guildId,
                     }
-                }, { signal: preActionAbort }).catch(err => {
+                }, { signal: preActionAbort.signal }).catch(err => {
                     const discordApiError = err instanceof DiscordAPIError ? err : null;
                     if (discordApiError && discordApiError.code === 160009 /** undocumented error code */) {
                         api.channels.createMessage(config.log_channel_id!, {
@@ -182,12 +182,12 @@ const onMessage = async (
         let permissionSkip = false as "owner" | "admin" | false;
         const dmMessage: Promise<APIMessage | null> = (async () => {
             try {
-                const guild = await getGuildInfo(api, guildId, preActionAbort, redis).catch(() => null);
+                const guild = await getGuildInfo(api, guildId, preActionAbort.signal, redis).catch(() => null);
                 permissionSkip = guild?.ownerId === userId ? "owner" : guild?.adminRoles?.some(role => userRoles.includes(role)) ? "admin" : false;
                 if (!config.experiments.includes("no-dm")) {
                     let dmChannel = redis && await getDmChannelCache(userId, redis);
                     if (!dmChannel) {
-                        ({ id: dmChannel } = await api.users.createDM(userId, { signal: preActionAbort }));
+                        ({ id: dmChannel } = await api.users.createDM(userId, { signal: preActionAbort.signal }));
                         if (redis) setDmChannelCache(userId, dmChannel, redis);
                     }
                     const reinviteCode = config.experiments.includes("reinvite") && await db.getReinvite(guildId);
@@ -201,7 +201,7 @@ const onMessage = async (
                         permissionSkip !== false,
                         customMessages?.dm_message
                     );
-                    return await api.channels.createMessage(dmChannel, dmContent, { signal: preActionAbort });
+                    return await api.channels.createMessage(dmChannel, dmContent, { signal: preActionAbort.signal });
                 }
             } catch (err) {
                 /* Ignore DM errors (user has DMs closed, etc.) */
@@ -235,6 +235,7 @@ const onMessage = async (
                     { delete_message_seconds: deleteMessageSeconds },
                     { reason: "Triggered honeypot -> ban" }
                 );
+                Bun.sleep(150).then(() => preActionAbort.abort());
             } else if (config.action === 'softban' || config.action === 'kick') {
                 // Kick: kick but via ban/unban, delete last 1 hour of messages
                 await api.guilds.banUser(
@@ -243,6 +244,7 @@ const onMessage = async (
                     { delete_message_seconds: deleteMessageSeconds },
                     { reason: "Triggered honeypot -> softban (kick) 1/2" }
                 );
+                Bun.sleep(150).then(() => preActionAbort.abort());
                 try {
                     await Bun.sleep(250);
                     await api.guilds.unbanUser(
@@ -319,6 +321,7 @@ const onMessage = async (
 
         // if they rejoin server, let them be punished again
         if (redis) unsetIsAlreadyModerating(guildId, userId, redis);
+        if (!preActionAbort.signal.aborted) preActionAbort.abort();
 
         const moderatedCount = await db.getModeratedCount(guildId, channels.length > 1 ? matchedChannel.channel_id : null);
 
