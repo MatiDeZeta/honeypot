@@ -165,7 +165,7 @@ const onMessage = async (
             // intentionally not awaited as in theory we can do DM and this at same time (and avoid extra wait-time)
             timeoutPromise = api.guilds.editMember(guildId, userId,
                 { communication_disabled_until: new Date(Date.now() + 3_600_000).toISOString() },
-                { reason: `Triggered honeypot -> timeout for 1hr before ${config.action}`, signal: preActionAbort }
+                { reason: `Triggered honeypot -> timeout for 1hr before ${config.action}`, signal: preActionAbort.signal }
             ).then(() => Bun.sleep(50))
                 .catch(err => {
                     if (err instanceof DiscordAPIError && (err.code === RESTJSONErrorCodes.MissingPermissions)) {
