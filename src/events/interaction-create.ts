@@ -1,4 +1,4 @@
-import { ButtonStyle, ChannelType, ComponentType, GatewayDispatchEvents, InteractionType, MessageFlags, PermissionFlagsBits, RESTJSONErrorCodes, SelectMenuDefaultValueType, TextInputStyle, type APIModalInteractionResponseCallbackData, type APISelectMenuOption, type RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
+import { ButtonStyle, ChannelType, ComponentType, GatewayDispatchEvents, InteractionType, MessageFlags, PermissionFlagsBits, RESTJSONErrorCodes, SelectMenuDefaultValueType, TextInputStyle, type APIInteractionDataResolvedChannel, type APIModalInteractionResponseCallbackData, type APISelectMenuOption, type RESTPostAPIChannelMessageJSONBody } from "discord-api-types/v10";
 import type { EventHandler } from "./events";
 import type { HoneypotConfig } from "../utils/db";
 import { honeypotWarningMessage, defaultHoneypotWarningMessage, defaultHoneypotUserDMMessage, defaultLogActionMessage, honeypotUserDMMessage, defaultHoneypotUserDMMessageReinvitePart } from "../utils/messages";
@@ -201,179 +201,21 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 const logChanged = newConfig.log_channel_id !== prevConfig?.log_channel_id;
 
                 // pretty reasonable requests to ensure user can even do said actions
-                {
-                    const requiredPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels;
-                    for (const id of selectedChannelIds) {
-                        const resolvedChannel = interaction.data.resolved?.channels?.[id];
-                        const userPerms = BigInt(resolvedChannel?.permissions || "0");
-                        if (!hasPermission(userPerms, requiredPerms)) {
-                            await interactionReply({
-                                content: `You don't have enough permissions to set the honeypot channel to <#${id}>. You need the following permissions in that channel: Send Messages, View Channel, Manage Messages, Manage Channels.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-
-                        // @ts-expect-error - should be documented soon:tm:
-                        const appPerms = BigInt(resolvedChannel?.app_permissions || "0");
-                        if (!hasPermission(appPerms, PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages)) {
-                            await interactionReply({
-                                content: `I don't have enough permissions to set the honeypot channel to <#${id}>. I need the following permissions in that channel: View Channel, Send Messages.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-
-                        if ((newConfig.experiments.includes("random-channel-name") || newConfig.experiments.includes("random-channel-name-chaos")) && !hasPermission(appPerms, PermissionFlagsBits.ManageChannels)) {
-                            await interactionReply({
-                                content: `I need the Manage Channels permission in <#${id}> to enable the "Random Channel Name" experiment.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-
-                        if (newConfig.experiments.includes("forward-message") && !hasPermission(appPerms, PermissionFlagsBits.ReadMessageHistory)) {
-                            await interactionReply({
-                                content: `I need the Read Message History permission in <#${id}> to enable the "Forward Message" experiment.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-
-                        if (newConfig.experiments.includes("ensure-msg-delete") && !hasPermission(appPerms, PermissionFlagsBits.ManageMessages)) {
-                            await interactionReply({
-                                content: `I need the Manage Messages permission in <#${id}> (and other channels) to enable the "Ensure Message Delete" experiment.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-                    }
-                    const resolvedLogChannel = newConfig.log_channel_id ? interaction.data.resolved?.channels?.[newConfig.log_channel_id] : null;
-                    const logRequiredPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel;
-                    if (logChanged && newConfig.log_channel_id) {
-                        if (!hasPermission(BigInt(resolvedLogChannel?.permissions || "0"), logRequiredPerms)) {
-                            await interactionReply({
-                                content: `You don’t have enough permissions to set the log channel to <#${newConfig.log_channel_id}>. You need the following permissions in that channel: Send Messages, View Channel.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-                    }
-                    if (newConfig.log_channel_id) {
-                        // @ts-expect-error - should be documented soon:tm:
-                        if (!hasPermission(BigInt(resolvedLogChannel?.app_permissions || "0"), logRequiredPerms)) {
-                            await interactionReply({
-                                content: `I don’t have enough permissions to set the log channel to <#${newConfig.log_channel_id}>. I need the following permissions in that channel: Send Messages, View Channel.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-
-                        // @ts-expect-error - nsfw prop does exist, not sure why not documented
-                        if (newConfig.experiments.includes("forward-message") && resolvedLogChannel && resolvedLogChannel.nsfw !== true) {
-                            const honeypotChannelsWithNsfw = selectedChannelIds.filter(id =>
-                                // @ts-expect-error - nsfw prop does exist, not sure why not documented
-                                interaction.data.resolved?.channels?.[id]?.nsfw === true
-                            );
-                            if (honeypotChannelsWithNsfw.length > 0) {
-                                await interactionReply({
-                                    content: `The log channel <#${newConfig.log_channel_id}> is not marked as NSFW, but the following honeypot channels are: ${honeypotChannelsWithNsfw.map(id => `<#${id}>`).join(", ")}. You cannot forward messages from NSFW channels to a non-NSFW channel.\n-# No settings have been changed.`,
-                                    allowed_mentions: {},
-                                    flags: MessageFlags.Ephemeral,
-                                });
-                                return;
-                            }
-                        }
-                    }
-
-                    const memberPerms = interaction.member?.permissions
-                    const banEvents = ["ban", "softban"];
-                    if (banEvents.includes(newConfig.action) && memberPerms && !hasPermission(BigInt(memberPerms), PermissionFlagsBits.BanMembers)) {
-                        await interactionReply({
-                            content: `You need the Ban Members permission to set the honeypot action to "${newConfig.action}".\n-# No settings have been changed.`,
-                            allowed_mentions: {},
-                            flags: MessageFlags.Ephemeral,
-                        });
-                        return;
-                    }
-                    if (banEvents.includes(newConfig.action) && !hasPermission(BigInt(interaction.app_permissions), PermissionFlagsBits.BanMembers)) {
-                        await interactionReply({
-                            content: `I need the Ban Members permission to set the honeypot action to "${newConfig.action}".\n-# No settings have been changed.`,
-                            allowed_mentions: {},
-                            flags: MessageFlags.Ephemeral,
-                        });
-                        return;
-                    }
-
-                    if (newConfig.experiments.includes("reinvite")) {
-                        const inviteChannel = interaction.data.resolved?.channels?.[selectedChannelIds[0]!];
-                        if (inviteChannel?.permissions && !hasPermission(BigInt(inviteChannel?.permissions), PermissionFlagsBits.CreateInstantInvite)) {
-                            await interactionReply({
-                                content: `You need the Create Invite permission in <#${inviteChannel.id}> to enable the "Reinvite" experiment.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-                        // @ts-expect-error - should be documented soon:tm:
-                        const inviteAppPerms = BigInt(inviteChannel?.app_permissions || "0");
-                        if (inviteChannel && !hasPermission(inviteAppPerms, PermissionFlagsBits.CreateInstantInvite)) {
-                            await interactionReply({
-                                content: `I need the Create Invite permission in <#${inviteChannel.id}> to enable the "Reinvite" experiment.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-                    }
-
-                    if (newConfig.experiments.includes("timeout-first")) {
-                        if (memberPerms && !hasPermission(BigInt(memberPerms), PermissionFlagsBits.ModerateMembers)) {
-                            await interactionReply({
-                                content: `You need the Timeout Members permission to enable the "Timeout First" experiment.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-                        if (!hasPermission(BigInt(interaction.app_permissions), PermissionFlagsBits.ModerateMembers)) {
-                            await interactionReply({
-                                content: `I need the Timeout Members permission to enable the "Timeout First" experiment.\n-# No settings have been changed.`,
-                                allowed_mentions: {},
-                                flags: MessageFlags.Ephemeral,
-                            });
-                            return;
-                        }
-                    }
-                    // if any other actions added in future, add their equivalent permission checks here
-
-
-                    // some experiments are mutually exclusive, so check for that
-                    if (newConfig.experiments.includes("no-dm") && newConfig.experiments.includes("reinvite")) {
-                        // reinvite is useless without dming them
-                        await interactionReply({
-                            content: `The "No DM" and "Reinvite" experiments are mutually exclusive.\n-# No settings have been changed.`,
-                            allowed_mentions: {},
-                            flags: MessageFlags.Ephemeral,
-                        });
-                        return;
-                    }
-                    if (newConfig.experiments.includes("forward-message") && newConfig.experiments.includes("ensure-msg-delete")) {
-                        // it tries to delete as early as possible, so its practically impossible to forward
-                        await interactionReply({
-                            content: `The "Forward Message" and "Ensure Message Delete" experiments are mutually exclusive.\n-# No settings have been changed.`,
-                            allowed_mentions: {},
-                            flags: MessageFlags.Ephemeral,
-                        });
-                        return;
-                    }
+                const permissionIssues = validateConfigPermissions(
+                    newConfig,
+                    selectedChannelIds,
+                    interaction.data.resolved?.channels,
+                    interaction.member?.permissions,
+                    interaction.app_permissions,
+                );
+                if (permissionIssues.length > 0) {
+                    await interactionReply({
+                        content: (permissionIssues.length > 1 ? permissionIssues.map(e => `- ${e}`).join("\n") : permissionIssues[0])
+                            + "\n-# No settings have been changed.",
+                        allowed_mentions: {},
+                        flags: MessageFlags.Ephemeral,
+                    });
+                    return;
                 }
 
                 // if honeypot channel changed or current honeypot msg is invalid, create new honeypot message
@@ -1103,5 +945,102 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
         }
     }
 };
+
+function validateConfigPermissions(
+    config: Pick<HoneypotConfig, "log_channel_id" | "action" | "experiments">,
+    channels: string[],
+    channelResolvable: Record<string, APIInteractionDataResolvedChannel> | undefined,
+    memberPermissions: string | undefined,
+    appPermissions: string,
+): string[] {
+    const errors: string[] = [];
+    const ch = (id: string) => channelResolvable?.[id]; 8
+    const need = (ok: boolean, msg: string) => { if (!ok) errors.push(msg); };
+    const issue = (msg: string) => errors.push(msg);
+
+    const channelPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels;
+    for (const id of channels) {
+        const userPerms = BigInt(ch(id)?.permissions || "0");
+        // @ts-expect-error - should be documented soon:tm:
+        const appPerms = BigInt(ch(id)?.app_permissions || "0");
+
+        need(hasPermission(userPerms, channelPerms),
+            `You don’t have enough permissions to set the honeypot channel to <#${id}>. You need the following permissions in that channel: Send Messages, View Channel, Manage Messages, Manage Channels.`);
+        need(hasPermission(appPerms, PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages),
+            `I don’t have enough permissions to set the honeypot channel to <#${id}>. I need the following permissions in that channel: View Channel, Send Messages.`);
+
+        if (config.experiments.includes("random-channel-name") || config.experiments.includes("random-channel-name-chaos")) {
+            need(hasPermission(appPerms, PermissionFlagsBits.ManageChannels),
+                `I need the Manage Channels permission in <#${id}> to enable the “Random Channel Name” experiment.`);
+        }
+        if (config.experiments.includes("forward-message")) {
+            need(hasPermission(appPerms, PermissionFlagsBits.ReadMessageHistory),
+                `I need the Read Message History permission in <#${id}> to enable the “Forward Message” experiment.`);
+        }
+        if (config.experiments.includes("ensure-msg-delete")) {
+            need(hasPermission(appPerms, PermissionFlagsBits.ManageMessages),
+                `I need the Manage Messages permission in <#${id}> (and other channels) to enable the “Ensure Message Delete” experiment.`);
+        }
+    }
+
+    if (config.log_channel_id) {
+        const logCh = ch(config.log_channel_id);
+        const logPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel;
+
+        need(hasPermission(BigInt(logCh?.permissions || "0"), logPerms),
+            `You don’t have enough permissions to set the log channel to <#${config.log_channel_id}>. You need the following permissions in that channel: Send Messages, View Channel.`);
+        // @ts-expect-error - should be documented soon:tm:
+        need(hasPermission(BigInt(logCh?.app_permissions || "0"), logPerms),
+            `I don’t have enough permissions to set the log channel to <#${config.log_channel_id}>. I need the following permissions in that channel: Send Messages, View Channel.`);
+
+        // @ts-expect-error - nsfw prop does exist, not sure why not documented
+        if (config.experiments.includes("forward-message") && logCh && !logCh.nsfw) {
+            // @ts-expect-error - nsfw prop does exist, not sure why not documented
+            const nsfwChannels = channels.filter(id => ch(id)?.nsfw === true);
+            if (nsfwChannels.length > 0) {
+                issue(`<#${config.log_channel_id}> is not marked as NSFW, but the following honeypot channels are: ${nsfwChannels.map(id => `<#${id}>`).join(", ")}. You cannot forward messages from NSFW channels to a non-NSFW channel.`);
+            }
+            // @ts-expect-error - should be documented soon:tm:
+            need(hasPermission(BigInt(logCh?.app_permissions || "0"), PermissionFlagsBits.EmbedLinks),
+                `I need the Embed Links permission in <#${config.log_channel_id}> to enable the “Forward Message” experiment.`);
+        }
+    }
+
+    const banActions = ["ban", "softban"];
+    if (banActions.includes(config.action)) {
+        need(!memberPermissions || hasPermission(BigInt(memberPermissions), PermissionFlagsBits.BanMembers),
+            `You need the Ban Members permission to set the honeypot action to “${config.action}”.`);
+        need(hasPermission(BigInt(appPermissions), PermissionFlagsBits.BanMembers),
+            `I need the Ban Members permission to set the honeypot action to “${config.action}”.`);
+    }
+
+    if (config.experiments.includes("reinvite") && channels[0]!) {
+        const inviteCh = ch(channels[0]);
+        need(!inviteCh || hasPermission(BigInt(inviteCh.permissions), PermissionFlagsBits.CreateInstantInvite),
+            `You need the Create Invite permission in <#${inviteCh?.id}> to enable the “Reinvite” experiment.`);
+        // @ts-expect-error - should be documented soon:tm:
+        need(!inviteCh || hasPermission(BigInt(inviteCh.app_permissions || "0"), PermissionFlagsBits.CreateInstantInvite),
+            `I need the Create Invite permission in <#${inviteCh?.id}> to enable the “Reinvite” experiment.`);
+    }
+
+    if (config.experiments.includes("timeout-first")) {
+        need(!memberPermissions || hasPermission(BigInt(memberPermissions), PermissionFlagsBits.ModerateMembers),
+            `You need the Timeout Members permission to enable the “Timeout First” experiment.`);
+        need(hasPermission(BigInt(appPermissions), PermissionFlagsBits.ModerateMembers),
+            `I need the Timeout Members permission to enable the “Timeout First” experiment.`);
+    }
+
+    if (config.experiments.includes("no-dm") && config.experiments.includes("reinvite")) {
+        issue(`“No DM” and “Reinvite” experiments are mutually exclusive.`);
+    }
+    if (config.experiments.includes("forward-message") && config.experiments.includes("ensure-msg-delete")) {
+        issue(`“Forward Message” and “Ensure Message Delete” experiments are mutually exclusive.`);
+    }
+    if (config.experiments.includes("forward-message") && !config.log_channel_id) {
+        issue(`“Forward Message” experiment requires a log channel to be set.`);
+    }
+
+    return errors;
+}
 
 export default handler;
