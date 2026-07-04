@@ -125,3 +125,9 @@ if (process.env.REPLICA_ID === "1" || !process.env.REPLICA_ID) {
         setCommandIdCache(commandIdMap, redis)
     });
 }
+
+// temp thing to try and understand what is going on for really delayed msgs in spam season
+rest.on("rateLimited", (info) => {
+    console.warn(`Rate limited on ${info.method} ${info.route} for ${info.retryAfter}ms (global: ${info.global}, scope: ${info.scope}, sublimitTimeout: ${info.sublimitTimeout}, hash: ${info.hash})`);
+});
+
