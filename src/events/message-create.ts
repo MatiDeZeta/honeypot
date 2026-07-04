@@ -145,7 +145,7 @@ const onMessage = async (
                         api.channels.createMessage(config.log_channel_id!, {
                             content: `Would forward https://discord.com/channels/${guildId}/${channelId}/${messageId}, but the bot doesn't have permission to Read Message History in that channel.`,
                             allowed_mentions: {},
-                        }).catch(err => console.error(styleText("dim", `Failed to send message about missing permissions to forward to log channel: ${err}`)));
+                        }).catch(err => console.log(styleText("dim", `Failed to send message about missing permissions to forward to log channel: ${err}`)));
                         console.log(styleText("dim", `Failed to forward message to log channel ${config.action}: ${err}`));
                     } else if (discordApiError && discordApiError.message.includes("MESSAGE_REFERENCE_UNKNOWN_MESSAGE")) {
                         console.log(styleText("dim", `Failed to forward message to log channel ${config.action}: ${err.toString().replace("\n", "; ")}`));
@@ -314,14 +314,14 @@ const onMessage = async (
             if (id) {
                 const diffSeconds = Math.floor((Date.now() - getDiscordDate(id)) / 1000);
                 if (diffSeconds > 30) {
-                    console.log(styleText("dim", `Moderated user in ${diffSeconds}s from ${messageId ? "message" : "thread"} creation`));
+                    console.log(styleText("reset", `Moderated user in ${diffSeconds}s from ${messageId ? "message" : "thread"} creation`));
                 }
             }
+            if (!preActionAbort.signal.aborted) preActionAbort.abort();
         }
 
         // if they rejoin server, let them be punished again
         if (redis) unsetIsAlreadyModerating(guildId, userId, redis);
-        if (!preActionAbort.signal.aborted) preActionAbort.abort();
 
         const moderatedCount = await db.getModeratedCount(guildId, channels.length > 1 ? matchedChannel.channel_id : null);
 
