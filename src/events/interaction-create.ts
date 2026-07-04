@@ -263,14 +263,33 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                                 flags: MessageFlags.Ephemeral,
                             });
                             return;
-                            // @ts-expect-error - should be documented soon:tm:
-                        } else if (!hasPermission(BigInt(resolvedLogChannel?.app_permissions || "0"), logRequiredPerms)) {
+                        }
+                    }
+                    if (newConfig.log_channel_id) {
+                        // @ts-expect-error - should be documented soon:tm:
+                        if (!hasPermission(BigInt(resolvedLogChannel?.app_permissions || "0"), logRequiredPerms)) {
                             await interactionReply({
                                 content: `I don’t have enough permissions to set the log channel to <#${newConfig.log_channel_id}>. I need the following permissions in that channel: Send Messages, View Channel.\n-# No settings have been changed.`,
                                 allowed_mentions: {},
                                 flags: MessageFlags.Ephemeral,
                             });
                             return;
+                        }
+
+                        // @ts-expect-error - nsfw prop does exist, not sure why not documented
+                        if (newConfig.experiments.includes("forward-message") && resolvedLogChannel && resolvedLogChannel.nsfw !== true) {
+                            const honeypotChannelsWithNsfw = selectedChannelIds.filter(id =>
+                                // @ts-expect-error - nsfw prop does exist, not sure why not documented
+                                interaction.data.resolved?.channels?.[id]?.nsfw === true
+                            );
+                            if (honeypotChannelsWithNsfw.length > 0) {
+                                await interactionReply({
+                                    content: `The log channel <#${newConfig.log_channel_id}> is not marked as NSFW, but the following honeypot channels are: ${honeypotChannelsWithNsfw.map(id => `<#${id}>`).join(", ")}. You cannot forward messages from NSFW channels to a non-NSFW channel.\n-# No settings have been changed.`,
+                                    allowed_mentions: {},
+                                    flags: MessageFlags.Ephemeral,
+                                });
+                                return;
+                            }
                         }
                     }
 
