@@ -44,17 +44,18 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 const manyHoneypots = config.experiments.includes("many-honeypots");
                 const experimentOptions = ([
                     HAS_MESSAGE_INTENT && { label: "Forward Message", value: "forward-message", description: "Forward the triggered message to the log channel", default: config.experiments.includes("forward-message") },
-                    { label: "Reinvite", value: "reinvite", description: "In the DM message give an invite code to rejoin (recommended)", default: config.experiments.includes("reinvite") },
-                    { label: "Timeout First", value: "timeout-first", description: "Timeout users (for 1hr) before banning/softbanning", default: config.experiments.includes("timeout-first") },
+                    { label: "⭐ Reinvite", value: "reinvite", description: "In the DM message give an invite code to rejoin (recommended)", default: config.experiments.includes("reinvite") },
+                    { label: "Timeout First", value: "timeout-first", description: "Timeout users (for 1hr) to limit their activity on rejoin", default: config.experiments.includes("timeout-first") },
                     // { label: "Timeout for Typing", value: "timeout-for-typing", description: "Timeout users (for 10sec) who are typing in the honeypot channel", default: config.experiments.includes("timeout-for-typing") },
                     { label: "Channel Warmer", value: "channel-warmer", description: "Keep the honeypot channel active (every day)", default: config.experiments.includes("channel-warmer") },
                     { label: "Random Channel Name", value: "random-channel-name", description: "Randomize the honeypot channel name (every day)", default: config.experiments.includes("random-channel-name") },
-                    { label: "Only More Recent Delete", value: "only-recent-delete", description: "Only delete last 15min of messages (instead of 1hr)", default: config.experiments.includes("only-recent-delete") },
+                    { label: "⭐ Only More Recent Delete", value: "only-recent-delete", description: "Only delete last 15min of messages (instead of 1hr)", default: config.experiments.includes("only-recent-delete") },
                     { label: "No Warning Msg", value: "no-warning-msg", description: "Don’t include the warning message in the #honeypot channel (deletes current if already present)", default: config.experiments.includes("no-warning-msg") },
                     { label: "No DM", value: "no-dm", description: "Don’t DM the user that they triggered the honeypot", default: config.experiments.includes("no-dm") },
                     { label: "Random Channel Name (Chaos)", value: "random-channel-name-chaos", description: "Randomise the honeypot channel name with random characters (every day)", default: config.experiments.includes("random-channel-name-chaos") },
-                    { label: "Many Honeypots", value: "many-honeypots", description: "Ability to create multiple honeypot channels - must submit modal and re-run /honeypot to set them", default: config.experiments.includes("many-honeypots") },
-                    HAS_MESSAGE_INTENT && hasHoneypotHistory && { label: "Ensure Message Deletion (only use if needed)", value: "ensure-msg-delete", description: "Search & delete leftover messages from moderated users 2min after moderation.", default: config.experiments.includes("ensure-msg-delete") },
+                    hasHoneypotHistory && { label: "⚠️ Recreate Channel", value: "recreate-channel", description: "Remake the honeypot channel (every day) - experiment may be removed & messages aren't preserved", default: config.experiments.includes("recreate-channel") },
+                    { label: "⭐ Many Honeypots", value: "many-honeypots", description: "Ability to create multiple honeypot channels - must submit modal and re-run /honeypot to set them", default: config.experiments.includes("many-honeypots") },
+                    HAS_MESSAGE_INTENT && hasHoneypotHistory && { label: "⚠️ Ensure Message Deletion (only use if needed)", value: "ensure-msg-delete", description: "Search & delete leftover messages from moderated users 2min after moderation.", default: config.experiments.includes("ensure-msg-delete") },
                 ] satisfies (APISelectMenuOption | false)[]).filter(e => !!e);
 
                 const modal: APIModalInteractionResponseCallbackData = {
@@ -170,7 +171,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     if (c.type === ComponentType.StringSelect) {
                         if (c.custom_id === "honeypot_experiments" && Array.isArray(c.values)) {
                             for (const val of c.values) {
-                                if (["no-warning-msg", "no-dm", "random-channel-name", "random-channel-name-chaos", "channel-warmer", "forward-message", "reinvite", "timeout-first", "only-recent-delete", "many-honeypots", "ensure-msg-delete"].includes(val)) {
+                                if (["no-warning-msg", "no-dm", "random-channel-name", "random-channel-name-chaos", "channel-warmer", "recreate-channel", "forward-message", "reinvite", "timeout-first", "only-recent-delete", "many-honeypots", "ensure-msg-delete"].includes(val)) {
                                     newConfig.experiments.push(val as any);
                                 }
                             }
@@ -972,6 +973,10 @@ function validateConfigPermissions(
         if (config.experiments.includes("random-channel-name") || config.experiments.includes("random-channel-name-chaos")) {
             need(hasPermission(appPerms, PermissionFlagsBits.ManageChannels),
                 `I need the Manage Channels permission in <#${id}> to enable the “Random Channel Name” experiment.`);
+        }
+        if (config.experiments.includes("recreate-channel")) {
+            need(hasPermission(appPerms, PermissionFlagsBits.ManageChannels),
+                `I need the Manage Channels permission in <#${id}> (and globally) to enable the “Channel Recreate” experiment.`);
         }
         if (config.experiments.includes("forward-message")) {
             need(hasPermission(appPerms, PermissionFlagsBits.ReadMessageHistory),

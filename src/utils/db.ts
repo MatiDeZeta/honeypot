@@ -10,6 +10,7 @@ export type HoneypotConfig = {
     "random-channel-name" |
     "random-channel-name-chaos" |
     "channel-warmer" |
+    "recreate-channel" |
     "forward-message" |
     "reinvite" |
     "timeout-first" |
@@ -260,6 +261,14 @@ export async function setHoneypotChannels(guild_id: string, channels: { channel_
         ON CONFLICT(channel_id)
         DO UPDATE SET msg_id=excluded.msg_id
       `;
+  });
+}
+
+export async function replaceHoneypotChannel(guild_id: string, old_channel_id: string, new_channel_id: string, msg_id?: string | null) {
+  await db.begin(async (tx) => {
+    await tx`INSERT INTO honeypot_channels (channel_id, guild_id, msg_id) VALUES (${new_channel_id}, ${guild_id}, ${msg_id ?? null}) ON CONFLICT(channel_id) DO UPDATE SET msg_id=excluded.msg_id`;
+    await tx`UPDATE honeypot_events SET channel_id = ${new_channel_id} WHERE guild_id = ${guild_id} AND channel_id = ${old_channel_id}`;
+    await tx`DELETE FROM honeypot_channels WHERE guild_id = ${guild_id} AND channel_id = ${old_channel_id}`;
   });
 }
 
