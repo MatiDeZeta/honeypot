@@ -9,6 +9,12 @@ import { DiscordAPIError } from "@discordjs/rest";
 import { styleText } from "node:util";
 import { getDiscordDate } from "../utils/tools";
 
+// limit to only send 120 per minute to avoid being blocked by Discord (or at least not get ratelimited too much)  
+let dms = {
+    count: 0,
+    reset: Date.now() + 60_000
+}
+
 const handler: EventHandler<GatewayDispatchEvents.MessageCreate> = {
     event: GatewayDispatchEvents.MessageCreate,
     handler: async ({ data: message, api, applicationId, redis, db }) => {
@@ -184,25 +190,37 @@ const onMessage = async (
             try {
                 const guild = await getGuildInfo(api, guildId, preActionAbort.signal, redis).catch(() => null);
                 permissionSkip = guild?.ownerId === userId ? "owner" : guild?.adminRoles?.some(role => userRoles.includes(role)) ? "admin" : false;
-                if (!config.experiments.includes("no-dm")) {
-                    let dmChannel = redis && await getDmChannelCache(userId, redis);
-                    if (!dmChannel) {
-                        ({ id: dmChannel } = await api.users.createDM(userId, { signal: preActionAbort.signal }));
-                        if (redis) setDmChannelCache(userId, dmChannel, redis);
+                if (config.experiments.includes("no-dm")) return null;
+
+                // check our simple dm ratelimit
+                if (!permissionSkip && dms.count >= 120) {
+                    if (Date.now() < dms.reset) {
+                        console.log(styleText("dim", "Self imposed DM ratelimit reached, skipping DM to user"));
+                        return null;
+                    } else {
+                        dms.count = 0;
+                        dms.reset = Date.now() + 60_000;
                     }
-                    const reinviteCode = config.experiments.includes("reinvite") && await db.getReinvite(guildId);
-                    const link = `https://discord.com/channels/${guildId}/${channelId}/${matchedChannel.msg_id || messageId || ""}`;
-                    const dmContent = honeypotUserDMMessage(
-                        config.action,
-                        guild?.name ?? guildId!,
-                        guild?.isDiscoverable ? `https://discord.com/servers/${guildId}` : undefined,
-                        link,
-                        reinviteCode ? `https://discord.gg/${reinviteCode}` : null,
-                        permissionSkip !== false,
-                        customMessages?.dm_message
-                    );
-                    return await api.channels.createMessage(dmChannel, dmContent, { signal: preActionAbort.signal });
                 }
+                dms.count++;
+
+                let dmChannel = redis && await getDmChannelCache(userId, redis);
+                if (!dmChannel) {
+                    ({ id: dmChannel } = await api.users.createDM(userId, { signal: preActionAbort.signal }));
+                    if (redis) setDmChannelCache(userId, dmChannel, redis);
+                }
+                const reinviteCode = config.experiments.includes("reinvite") && await db.getReinvite(guildId);
+                const link = `https://discord.com/channels/${guildId}/${channelId}/${matchedChannel.msg_id || messageId || ""}`;
+                const dmContent = honeypotUserDMMessage(
+                    config.action,
+                    guild?.name ?? guildId!,
+                    guild?.isDiscoverable ? `https://discord.com/servers/${guildId}` : undefined,
+                    link,
+                    reinviteCode ? `https://discord.gg/${reinviteCode}` : null,
+                    permissionSkip !== false,
+                    customMessages?.dm_message
+                );
+                return await api.channels.createMessage(dmChannel, dmContent, { signal: preActionAbort.signal });
             } catch (err) {
                 /* Ignore DM errors (user has DMs closed, etc.) */
                 if (`${err}` === "AbortError: The operation was aborted." || `${err}` === "Error: Request aborted manually") {

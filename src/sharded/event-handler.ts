@@ -37,7 +37,8 @@ const redis = getRedis();
 const redisBlocking = getRedis({ connectionTimeout: 1000, maxRetries: 1 });
 const redisPubSub = getRedis();
 
-const rest = new REST().setToken(process.env.DISCORD_TOKEN!);
+const rest = new REST({ rejectOnRateLimit: ["/channels/:id/messages/:id/reactions"] })
+    .setToken(process.env.DISCORD_TOKEN!);
 const api = new API(rest);
 
 let runLoop = true;
