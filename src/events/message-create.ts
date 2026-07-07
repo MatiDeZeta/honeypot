@@ -343,93 +343,103 @@ const onMessage = async (
 
         const moderatedCount = await db.getModeratedCount(guildId, channels.length > 1 ? matchedChannel.channel_id : null);
 
-        let hasAccessToLogChannel = true;
-        try {
-            // const reply = (messageId && channelId === matchedChannel.channel_id) ? {
-            //     message_id: messageId,
-            //     fail_if_not_exists: false,
-            // } satisfies RESTAPIMessageReference : undefined;
-            const reply = undefined as RESTAPIMessageReference | undefined;
 
-            if (config.log_channel_id && !failed && !permissionSkip) {
-                await api.channels.createMessage(config.log_channel_id, {
-                    ...logActionMessage(userId, matchedChannel.channel_id, config.action, customMessages?.log_message, moderatedCount),
-                    allowed_mentions: { users: [userId] },
-                });
-            } else if (permissionSkip) {
-                await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                    content: `⚠️ User <@${userId}> triggered the honeypot, but they are ${permissionSkip === "owner" ? "the **server owner**" : "a **server admin**"} so I cannot ${config.action} them.\n-# In anycase **ensure my role is higher** than people’s highest role and that I have **ban members** permission so I can ${config.action} for actual cases.`,
-                    allowed_mentions: { users: [userId] },
-                    message_reference: reply
-                });
-            } else if (failed === "unban" && config.action === "softban") {
-                await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                    content: `⚠️ User <@${userId}> triggered the honeypot, but I failed to **fully** softban them.\n-# They may still be banned but you can manually unban them in server settings.`,
-                    allowed_mentions: { users: [userId] },
-                    message_reference: reply
-                });
-                await emojiReact;
-            } else if (failed === "permissions") {
-                await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                    content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.\n-# Please check my permissions to **ensure my role is higher** than their highest role and that I have **ban members** permission.`,
-                    allowed_mentions: { users: [userId] },
-                    message_reference: reply
-                });
-                await emojiReact;
-            } else if (failed) {
-                await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                    content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.\n-# This could be due to a transient Discord issue, or something unexpected. Please check my permissions in any case.`,
-                    allowed_mentions: { users: [userId] },
-                    message_reference: reply
-                });
-                await emojiReact;
-            }
-        } catch (err) {
-            // somewhat chance the channel is deleted or the bot lost perms to send messages there
-            if (err instanceof DiscordAPIError) {
-                if (err.code == RESTJSONErrorCodes.UnknownChannel && config.log_channel_id) {
-                    await db.unsetLogChannel(guildId, config.log_channel_id);
-                } else if (err.code == RESTJSONErrorCodes.MissingAccess || err.code == RESTJSONErrorCodes.MissingPermissions) {
-                    console.log(styleText("dim", `Failed to send log message (MessageCreate handler): ${err}`));
-                } else {
-                    console.log(`Failed to send log message (MessageCreate handler): ${err}`);
-                }
-            } else console.log(`Failed to send log message (MessageCreate handler): ${err}`);
-            hasAccessToLogChannel = false;
-        }
-
-        if (matchedChannel.msg_id && !config.experiments.includes("no-warning-msg")) try {
-            await api.channels.editMessage(
-                matchedChannel.channel_id,
-                matchedChannel.msg_id,
-                honeypotWarningMessage(moderatedCount, config.action, customMessages?.warning_message)
-            );
-        } catch (err) {
-            const discordError = err instanceof DiscordAPIError ? err : null;
-            if (discordError && discordError.code == RESTJSONErrorCodes.UnknownMessage) {
-                console.log(styleText("dim", `Failed to update honeypot message (after banning): ${err}`));
-                await db.unsetHoneypotMsg(guildId, matchedChannel.msg_id!);
-            } else if (discordError && (discordError.code == RESTJSONErrorCodes.MissingPermissions || discordError.code == RESTJSONErrorCodes.MissingAccess)) {
-                console.log(styleText("dim", `Failed to update honeypot message (after banning): ${err}`));
-                await db.unsetHoneypotMsg(guildId, matchedChannel.msg_id!);
-            } else console.log(`Failed to update honeypot message (after banning): ${err}`);
-        }
-
-        const succeededToDelete = deleteMessageStatus ? await deleteMessageStatus : null;
-        if (hasAccessToLogChannel && succeededToDelete === false) {
+        async function logMessage() {
+            if (!matchedChannel) return;
             try {
-                // send error msg to log channel saying it doesnt have perms to delete messages
-                await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                    content: `The bot failed to manually delete the [triggering message](https://discord.com/channels/${guildId}/${matchedChannel.channel_id}/${messageId ?? ""}), likely because it doesn't have permission to Manage Messages in that channel. Please check my permissions or disable the "Ensure Message Delete" experiment.`
-                        + `\n-# This message may be deleted properly by discord, however this experiment is to ensure there isn't anything left over by them.`,
-                    allowed_mentions: {},
-                });
+                // const reply = (messageId && channelId === matchedChannel.channel_id) ? {
+                //     message_id: messageId,
+                //     fail_if_not_exists: false,
+                // } satisfies RESTAPIMessageReference : undefined;
+                const reply = undefined as RESTAPIMessageReference | undefined;
+
+                if (config.log_channel_id && !failed && !permissionSkip) {
+                    await api.channels.createMessage(config.log_channel_id, {
+                        ...logActionMessage(userId, matchedChannel.channel_id, config.action, customMessages?.log_message, moderatedCount),
+                        allowed_mentions: { users: [userId] },
+                    });
+                } else if (permissionSkip) {
+                    await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
+                        content: `⚠️ User <@${userId}> triggered the honeypot, but they are ${permissionSkip === "owner" ? "the **server owner**" : "a **server admin**"} so I cannot ${config.action} them.\n-# In anycase **ensure my role is higher** than people’s highest role and that I have **ban members** permission so I can ${config.action} for actual cases.`,
+                        allowed_mentions: { users: [userId] },
+                        message_reference: reply
+                    });
+                } else if (failed === "unban" && config.action === "softban") {
+                    await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
+                        content: `⚠️ User <@${userId}> triggered the honeypot, but I failed to **fully** softban them.\n-# They may still be banned but you can manually unban them in server settings.`,
+                        allowed_mentions: { users: [userId] },
+                        message_reference: reply
+                    });
+                    await emojiReact;
+                } else if (failed === "permissions") {
+                    await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
+                        content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.\n-# Please check my permissions to **ensure my role is higher** than their highest role and that I have **ban members** permission.`,
+                        allowed_mentions: { users: [userId] },
+                        message_reference: reply
+                    });
+                    await emojiReact;
+                } else if (failed) {
+                    await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
+                        content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.\n-# This could be due to a transient Discord issue, or something unexpected. Please check my permissions in any case.`,
+                        allowed_mentions: { users: [userId] },
+                        message_reference: reply
+                    });
+                    await emojiReact;
+                }
             } catch (err) {
-                console.log(`Failed to send message about missing permissions to delete messages to log channel: ${err}`);
+                // somewhat chance the channel is deleted or the bot lost perms to send messages there
+                if (err instanceof DiscordAPIError) {
+                    if (err.code == RESTJSONErrorCodes.UnknownChannel && config.log_channel_id) {
+                        await db.unsetLogChannel(guildId, config.log_channel_id);
+                    } else if (err.code == RESTJSONErrorCodes.MissingAccess || err.code == RESTJSONErrorCodes.MissingPermissions) {
+                        console.log(styleText("dim", `Failed to send log message (MessageCreate handler): ${err}`));
+                    } else {
+                        console.log(`Failed to send log message (MessageCreate handler): ${err}`);
+                    }
+                } else console.log(`Failed to send log message (MessageCreate handler): ${err}`);
             }
-        } else if (!failed && succeededToDelete === true && HAS_MESSAGE_INTENT) {
-            addToEnsureMsgDeleteQueue(userId, guildId, redis);
         }
+
+        async function updateWarning() {
+            if (!matchedChannel) return;
+            if (matchedChannel.msg_id && !config.experiments.includes("no-warning-msg")) try {
+                await api.channels.editMessage(
+                    matchedChannel.channel_id,
+                    matchedChannel.msg_id,
+                    honeypotWarningMessage(moderatedCount, config.action, customMessages?.warning_message)
+                );
+            } catch (err) {
+                const discordError = err instanceof DiscordAPIError ? err : null;
+                if (discordError && discordError.code == RESTJSONErrorCodes.UnknownMessage) {
+                    console.log(styleText("dim", `Failed to update honeypot message (after banning): ${err}`));
+                    await db.unsetHoneypotMsg(guildId, matchedChannel.msg_id!);
+                } else if (discordError && (discordError.code == RESTJSONErrorCodes.MissingPermissions || discordError.code == RESTJSONErrorCodes.MissingAccess)) {
+                    console.log(styleText("dim", `Failed to update honeypot message (after banning): ${err}`));
+                    await db.unsetHoneypotMsg(guildId, matchedChannel.msg_id!);
+                } else console.log(`Failed to update honeypot message (after banning): ${err}`);
+            }
+        }
+
+        async function addToDeleteQueue() {
+            if (!matchedChannel) return;
+            const succeededToDelete = deleteMessageStatus ? await deleteMessageStatus : null;
+            if (succeededToDelete === false) {
+                try {
+                    // send error msg to log channel saying it doesnt have perms to delete messages
+                    await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
+                        content: `The bot failed to manually delete the [triggering message](https://discord.com/channels/${guildId}/${matchedChannel.channel_id}/${messageId ?? ""}), likely because it doesn't have permission to Manage Messages in that channel. Please check my permissions or disable the "Ensure Message Delete" experiment.`
+                            + `\n-# This message may be deleted properly by discord, however this experiment is to ensure there isn't anything left over by them.`,
+                        allowed_mentions: {},
+                    });
+                } catch (err) {
+                    console.log(`Failed to send message about missing permissions to delete messages to log channel: ${err}`);
+                }
+            } else if (!failed && succeededToDelete === true && HAS_MESSAGE_INTENT) {
+                addToEnsureMsgDeleteQueue(userId, guildId, redis);
+            }
+        }
+
+        await Promise.all([logMessage(), updateWarning(), addToDeleteQueue()]);
     } catch (err) {
         console.error(`Error with MessageCreate handler: ${err}`);
     }
