@@ -32,6 +32,9 @@
     "discord-api-types": "^0.38.49"
   },
   "overrides": {
-    "discord-api-types": "^0.38.49"
+    "discord-api-types": "https://github.com/discordjs/discord-api-types#02620a6"
+  },
+  "patchedDependencies": {
+    "discord-api-types@github:discordjs/discord-api-types#02620a6": "patches/discord-api-types.patch"
   }
 }

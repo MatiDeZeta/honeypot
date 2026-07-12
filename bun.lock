@@ -16,8 +16,11 @@
       },
     },
   },
+  "patchedDependencies": {
+    "discord-api-types@github:discordjs/discord-api-types#02620a6": "patches/discord-api-types.patch",
+  },
   "overrides": {
-    "discord-api-types": "^0.38.49",
+    "discord-api-types": "https://github.com/discordjs/discord-api-types#02620a6",
   },
   "packages": {
     "@discordjs/collection": ["@discordjs/collection@3.0.0-dev.1782606054-b9c59f784", "", {}, "sha512-bo8SrlyoduQ9cmGKNeBfaj6u+9lGhcoI3EExIKvY17POFRHnf/OAp9Illd9NQjXSYUUiGQoIjpYt/8B8qbUE7w=="],
@@ -42,7 +45,7 @@
 
     "@vladfrangu/async_event_emitter": ["@vladfrangu/async_event_emitter@2.4.7", "", {}, "sha512-Xfe6rpCTxSxfbswi/W/Pz7zp1WWSNn4A0eW4mLkQUewCrXXtMj31lCg+iQyTkh/CkusZSq9eDflu7tjEDXUY6g=="],
 
-    "discord-api-types": ["discord-api-types@0.38.49", "", {}, "sha512-XnqcWmnFZFAE8ZM8SHAw9DIV8D3Or00rMQ8iQLotrEA2PmXhl+ykaf6L6q4l474hrSUH1JaYcv+iOMRWp2p6Tg=="],
+    "discord-api-types": ["discord-api-types@github:discordjs/discord-api-types#02620a6", {}, "discordjs-discord-api-types-02620a6", "sha512-4x8Bs7MbT9G2eqtplRfmwLPVyD53UFpkqChYGOJFmhoEUNhOZUlQwcGNqvb8XXM3FiVSsLz5WLmyCLXAUFguCw=="],
 
     "magic-bytes.js": ["magic-bytes.js@1.13.0", "", {}, "sha512-afO2mnxW7GDTXMm5/AoN1WuOcdoKhtgXjIvHmobqTD1grNplhGdv3PFOyjCVmrnOZBIT/gD/koDKpYG+0mvHcg=="],
 
