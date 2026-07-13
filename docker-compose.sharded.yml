@@ -106,7 +106,7 @@ services:
        replicas: ${STATS_REPLICAS:-1}
        resources:
          limits:
-           memory: 64M
+           memory: 128M
            cpus: "0.5"
          reservations:
            memory: 10M
