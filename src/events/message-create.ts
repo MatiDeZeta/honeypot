@@ -9,7 +9,7 @@ import { DiscordAPIError } from "@discordjs/rest";
 import { styleText } from "node:util";
 import { getDiscordDate } from "../utils/tools";
 
-// limit to only send 120 per minute to avoid being blocked by Discord (or at least not get ratelimited too much)  
+// limit to only send 60 per minute to avoid being blocked by Discord (or at least not get ratelimited too much)  
 let dms = {
     count: 0,
     reset: Date.now() + 60_000
@@ -193,7 +193,7 @@ const onMessage = async (
                 if (config.experiments.includes("no-dm")) return null;
 
                 // check our simple dm ratelimit
-                if (!permissionSkip && dms.count >= 120) {
+                if (!permissionSkip && dms.count >= 60) {
                     if (Date.now() < dms.reset) {
                         console.log(styleText("dim", "Self imposed DM ratelimit reached, skipping DM to user"));
                         return null;

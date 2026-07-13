@@ -1045,8 +1045,8 @@ function validateConfigPermissions(
                 issue(`<#${config.log_channel_id}> is not marked as NSFW, but the following honeypot channels are: ${nsfwChannels.map(id => `<#${id}>`).join(", ")}. You cannot forward messages from NSFW channels to a non-NSFW channel.`);
             }
             // @ts-expect-error - should be documented soon:tm:
-            need(hasPermission(BigInt(logCh?.app_permissions || "0"), PermissionFlagsBits.EmbedLinks),
-                `I need the Embed Links permission in <#${config.log_channel_id}> to enable the “Forward Message” experiment.`);
+            need(hasPermission(BigInt(logCh?.app_permissions || "0"), PermissionFlagsBits.AttachFiles),
+                `I need the Attach Files permission in <#${config.log_channel_id}> to enable the “Forward Message” experiment.`);
         }
     }
 

@@ -256,7 +256,7 @@ async function checkSetupAndWarn(api: API | API2, channelId: string, application
                             components: [
                                 {
                                     type: ComponentType.TextDisplay,
-                                    content: "### \\⚠️ Some potential problems were detected:",
+                                    content: "### \\⚠️  Some potential problems were detected:",
                                 },
                             ],
                             accessory: {

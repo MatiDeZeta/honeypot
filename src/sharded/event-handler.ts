@@ -129,8 +129,9 @@ if (process.env.REPLICA_ID === "1" || !process.env.REPLICA_ID) {
 
 // temp thing to try and understand what is going on for really delayed msgs in spam season
 import { snowflakeToBase64 } from "../utils/tools";
+import { styleText } from "node:util";
 rest.on("rateLimited", (info) => {
     if (info.route === "/channels/:id/messages/:id/reactions/:reaction") return; // ignore this one because its expected to be rate limited sometimes
-    console.warn(`Rate limited on ${info.method} ${info.route} for ${info.retryAfter}ms (global: ${info.global}, scope: ${info.scope}, sublimitTimeout: ${info.sublimitTimeout}, limit: ${info.limit}, hash: ${info.hash}, majorParamHash: ${snowflakeToBase64(Bun.hash(info.majorParameter))})`);
+    console.log(styleText("dim", `Rate limited on ${info.method} ${info.route} for ${info.retryAfter}ms (global: ${info.global}, scope: ${info.scope}, sublimitTimeout: ${info.sublimitTimeout}, limit: ${info.limit}, hash: ${info.hash})`));
 });
 
