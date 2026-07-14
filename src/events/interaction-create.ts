@@ -468,7 +468,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                                 type: ComponentType.TextInput,
                                 custom_id: "honeypot_warning",
                                 style: TextInputStyle.Paragraph,
-                                min_length: Math.min(25, (messages?.dm_message?.length || 25)),
+                                min_length: Math.min(25, (messages?.warning_message?.length || 25)),
                                 max_length: 1500,
                                 required: false,
                                 value: messages?.warning_message || defaultHoneypotWarningMessage,
