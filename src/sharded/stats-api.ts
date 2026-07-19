@@ -32,7 +32,7 @@ const server = Bun.serve({
                     headers: {
                         "Content-Type": "application/json",
                         "Access-Control-Allow-Origin": "*",
-                        "Cache-Control": "public, max-age=30, stale-while-revalidate=600",
+                        "Cache-Control": "public, max-age=15, stale-while-revalidate=600",
                     }
                 });
             }
@@ -44,7 +44,7 @@ const server = Bun.serve({
                     headers: {
                         "Content-Type": "application/json",
                         "Access-Control-Allow-Origin": "*",
-                        // "Cache-Control": "public, max-age=30, stale-while-revalidate=600",
+                        "Cache-Control": "public, max-age=15, stale-while-revalidate=600",
                     }
                 });
             }
@@ -94,6 +94,7 @@ const server = Bun.serve({
         backpressureLimit: 1,
         closeOnBackpressureLimit: true,
         idleTimeout: 600,
+        sendPings: true,
         open: async (ws) => {
             ws.subscribe("stats_update")
             const stats = await getStats();
