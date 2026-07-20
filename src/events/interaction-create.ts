@@ -1048,7 +1048,6 @@ function validateConfigPermissions(
     const channelPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels;
     for (const id of channels) {
         const userPerms = BigInt(ch(id)?.permissions || "0");
-        // @ts-expect-error - should be documented soon:tm:
         const appPerms = BigInt(ch(id)?.app_permissions || "0");
 
         need(hasPermission(userPerms, channelPerms),
@@ -1080,7 +1079,6 @@ function validateConfigPermissions(
 
         need(hasPermission(BigInt(logCh?.permissions || "0"), logPerms),
             `You don’t have enough permissions to set the log channel to <#${config.log_channel_id}>. You need the following permissions in that channel: Send Messages, View Channel.`);
-        // @ts-expect-error - should be documented soon:tm:
         need(hasPermission(BigInt(logCh?.app_permissions || "0"), logPerms),
             `I don’t have enough permissions to set the log channel to <#${config.log_channel_id}>. I need the following permissions in that channel: Send Messages, View Channel.`);
 
@@ -1091,7 +1089,6 @@ function validateConfigPermissions(
             if (nsfwChannels.length > 0) {
                 issue(`<#${config.log_channel_id}> is not marked as NSFW, but the following honeypot channels are: ${nsfwChannels.map(id => `<#${id}>`).join(", ")}. You cannot forward messages from NSFW channels to a non-NSFW channel.`);
             }
-            // @ts-expect-error - should be documented soon:tm:
             need(hasPermission(BigInt(logCh?.app_permissions || "0"), PermissionFlagsBits.AttachFiles),
                 `I need the Attach Files permission in <#${config.log_channel_id}> to enable the “Forward Message” experiment.`);
         }
@@ -1109,7 +1106,6 @@ function validateConfigPermissions(
         const inviteCh = ch(channels[0]);
         need(!inviteCh || hasPermission(BigInt(inviteCh.permissions), PermissionFlagsBits.CreateInstantInvite),
             `You need the Create Invite permission in <#${inviteCh?.id}> to enable the “Reinvite” experiment.`);
-        // @ts-expect-error - should be documented soon:tm:
         need(!inviteCh || hasPermission(BigInt(inviteCh.app_permissions || "0"), PermissionFlagsBits.CreateInstantInvite),
             `I need the Create Invite permission in <#${inviteCh?.id}> to enable the “Reinvite” experiment.`);
     }
