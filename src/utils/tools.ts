@@ -28,3 +28,5 @@ export function base64ToSlowflake(base64: string): bigint {
     }
     return new DataView(uint8Array.buffer).getBigUint64(0, false);
 }
+
+export const trim = (str: string, max: number) => str.length > max ? str.slice(0, max - 1) + "…" : str;

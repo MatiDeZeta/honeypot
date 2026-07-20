@@ -8,7 +8,7 @@ import { CUSTOM_EMOJI, CUSTOM_EMOJI_ID, HAS_MESSAGE_INTENT } from "../utils/cons
 import { getDmChannelCache, getGuildInfo, removeFromDeleteMessageCache, setDmChannelCache, setSubscribedChannelCache } from "../utils/cache";
 import { DiscordAPIError } from "@discordjs/rest";
 import { styleText } from "node:util";
-import { getDiscordDate, hasPermission } from "../utils/tools";
+import { getDiscordDate, hasPermission, trim } from "../utils/tools";
 import type { CreateInteractionResponseOptions } from "@discordjs/core";
 
 const badWords = getBadWords() as any as Awaited<ReturnType<typeof getBadWords>>;
@@ -917,6 +917,53 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     allowed_mentions: {},
                 });
             }
+
+            // simple way to give more useful info on possible cause for ban fail
+            else if (guildId && interaction.type === InteractionType.MessageComponent && interaction.data.custom_id.startsWith("troubleshoot_ban:")) {
+                if (!interaction.member?.permissions || !hasPermission(BigInt(interaction.member.permissions), PermissionFlagsBits.BanMembers)) {
+                    await api.interactions.reply(interaction.id, interaction.token, {
+                        content: "You need the Ban Members permission see the troubleshooting information.",
+                        allowed_mentions: {},
+                        flags: MessageFlags.Ephemeral,
+                    });
+                    return;
+                }
+
+                const userIdToCheck = interaction.data.custom_id.slice("troubleshoot_ban:".length);
+                const [roles, member, botMember] = await Promise.all([
+                    api.guilds.getRoles(guildId).catch(() => null),
+                    api.guilds.getMember(guildId, userIdToCheck).catch(() => null),
+                    api.guilds.getMember(guildId, interaction.application_id).catch(() => null),
+                ]);
+
+                const userRoles = member?.roles ?? [];
+                const botRoles = botMember?.roles ?? [];
+                const roleInfo = roles?.sort((a, b) => b.position - a.position).map(r => ({
+                    id: r.id,
+                    isUser: userRoles.includes(r.id) || r.id === guildId,
+                    isBot: botRoles.includes(r.id) || r.id === guildId,
+                })) ?? [];
+
+                const botPermissions = botRoles.reduce((acc, role) => acc | BigInt(roles?.find(r => r.id === role)?.permissions ?? "0"), 0n);
+                const userPermissions = userRoles.reduce((acc, role) => acc | BigInt(roles?.find(r => r.id === role)?.permissions ?? "0"), 0n);
+
+                await api.interactions.reply(interaction.id, interaction.token, {
+                    flags: MessageFlags.Ephemeral,
+                    allowed_mentions: {},
+                    content: trim(`## Troubleshooting Ban Permissions
+Checking whether <@${interaction.application_id}> has the correct permissions to ban <@${userIdToCheck}> in this server.
+
+**Permissions:**
+-# - Bot has Ban Members: **${hasPermission(botPermissions, PermissionFlagsBits.BanMembers) ? "Yes" : "No"}**
+-# - User doesn't have Admin: **${!(hasPermission(userPermissions, PermissionFlagsBits.Administrator)) ? "Yes" : "No"}**
+
+**Roles:** (in order of position, highest first)
+${roleInfo.map(r => `-# - <@&${r.id}> ${r.isUser ? " **[user]**" : ""}${r.isBot ? " **[bot]**" : ""}`).join("\n") || "-# *(none)*"}
+
+`, 2000),
+                });
+            }
+
 
             // a way to see if the templates work for custom messages, without having to trigger the honeypot
             else if (guildId && interaction.type === InteractionType.MessageComponent && interaction.data.custom_id.startsWith("preview_message:")) {

@@ -1,4 +1,4 @@
-import { GatewayDispatchEvents, RESTJSONErrorCodes, MessageReferenceType, MessageType } from "discord-api-types/v10";
+import { GatewayDispatchEvents, RESTJSONErrorCodes, MessageReferenceType, MessageType, ComponentType, MessageFlags, ButtonStyle } from "discord-api-types/v10";
 import type { EventHandler } from "./events";
 import type { API } from "@discordjs/core";
 import type { API as API2 } from "@discordjs/core/http-only";
@@ -430,7 +430,25 @@ async function logMessage(
             });
         } else if (failed === "permissions") {
             await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.\n-# Please check my permissions to **ensure my role is higher** than their highest role and that I have **ban members** permission.`,
+                flags: MessageFlags.IsComponentsV2,
+                components: [
+                    {
+                        type: ComponentType.TextDisplay,
+                        content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.`,
+                    },
+                    {
+                        type: ComponentType.Section,
+                        components: [{
+                            type: ComponentType.TextDisplay,
+                            content: `-# Please check my permissions to **ensure my role is higher** than their highest role and that I have **ban members** permission.`,
+                        }],
+                        accessory: {
+                            type: ComponentType.Button,
+                            style: ButtonStyle.Secondary,
+                            label: "Troubleshoot",
+                            custom_id: `troubleshoot_ban:${userId}`,
+                        }
+                    }],
                 allowed_mentions: { users: [userId] },
             });
         } else if (failed) {
