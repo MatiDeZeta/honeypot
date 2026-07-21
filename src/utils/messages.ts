@@ -28,7 +28,7 @@ export function honeypotWarningMessage(
               {
                 type: ComponentType.TextDisplay,
                 content: messageText?.replace(/\{\{action(:text)?\}\}/g, actionText)
-                  || `## DO NOT SEND MESSAGES IN THIS CHANNEL\n\nThis channel is used to catch spam bots. Any messages sent here will result in **${actionText}**.`
+                  || `## NO ENVÍES MENSAJES EN ESTE CANAL\n\nEste canal se utiliza para detectar bots de spam. Cualquier mensaje que se envíe aquí dará lugar a **${actionText}**.`
               }
             ],
             accessory: {
@@ -61,7 +61,7 @@ export function honeypotWarningMessage(
   };
 }
 
-export const defaultHoneypotWarningMessage = "## DO NOT SEND MESSAGES IN THIS CHANNEL\n\nThis channel is used to catch spam bots. Any messages sent here will result in **{{action:text}}**.";
+export const defaultHoneypotWarningMessage = "## NO ENVÍES MENSAJES EN ESTE CANAL\n\nEste canal se utiliza para detectar bots de spam. Cualquier mensaje que se envíe aquí dará lugar a **{{action:text}}**.";
 
 const pastTenseActionText = {
   ban: 'banned',
