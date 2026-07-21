@@ -22,7 +22,7 @@ export async function channelWarmerExperiment(api: API | API2, guildId: string, 
     const msg = await api.channels.createMessage(
         channelId,
         {
-            content: `Keeping the honeypot channel active! ${CUSTOM_EMOJI}`,
+            content: `¡Manteniendo activo el canal honeypot! ${CUSTOM_EMOJI}`,
             allowed_mentions: {},
             flags: MessageFlags.SuppressNotifications,
         }
@@ -81,7 +81,7 @@ async function channelRecreateExperiment(api: API | API2, guildId: string, chann
         } else {
             // just so it has has actually had a message there
             const msg = await api.channels.createMessage(channelId, {
-                content: `New honeypot channel! ${CUSTOM_EMOJI}`,
+                content: `¡Nuevo canal honeypot! ${CUSTOM_EMOJI}`,
                 allowed_mentions: {},
                 flags: MessageFlags.SuppressNotifications,
             });
@@ -96,7 +96,7 @@ async function channelRecreateExperiment(api: API | API2, guildId: string, chann
     } catch (err) {
         console.log(`Error occurred while deleting channel (recreate experiment): ${err}`);
         api.channels.createMessage(channelId, {
-            content: `⚠️ This channel was supposed to be deleted and replaced with <#${newChannel.id}> for the "Channel Recreate" experiment, but I was unable to delete it. This is no longer a watched honeypot channel.`,
+            content: `⚠️ Este canal debía eliminarse y reemplazarse por <#${newChannel.id}> para el experimento "Recrear canal", pero no pude eliminarlo. Este canal ya no se supervisa como honeypot.`,
             allowed_mentions: {},
             flags: MessageFlags.SuppressNotifications,
         }).catch(() => { });
@@ -139,7 +139,7 @@ const cron: Cron = {
                         // there is no way that we can send msg in honeypot channel (as discovered above)
                         if (config.log_channel_id) {
                             await api.channels.createMessage(config.log_channel_id, {
-                                content: `⚠️ There was a problem sending a message to the <#${channel.channel_id}> channel for the "Channel Warmer" experiment. Please check my permissions.`,
+                                content: `⚠️ Hubo un problema al enviar un mensaje al canal <#${channel.channel_id}> para el experimento "Mantener canal activo". Revisa mis permisos.`,
                                 allowed_mentions: {},
                             }).catch(err => {
                                 const discordErrorCode = err instanceof DiscordAPIError ? err.code : null;
@@ -190,7 +190,7 @@ const cron: Cron = {
                         // so if there isnt a seperate log channel, no point sending a message that will always fail
                         if ((discordErrorCode !== RESTJSONErrorCodes.MissingAccess && discordErrorCode !== RESTJSONErrorCodes.UnknownChannel) || config.log_channel_id) {
                             await api.channels.createMessage(config.log_channel_id || channel.channel_id, {
-                                content: `⚠️ There was a problem updating the <#${channel.channel_id}> channel for the "Random Channel Name" experiment. Please check my permissions.`,
+                                content: `⚠️ Hubo un problema al actualizar el canal <#${channel.channel_id}> para el experimento "Nombre aleatorio de canal". Revisa mis permisos.`,
                                 allowed_mentions: {},
                             }).catch(err => {
                                 const discordErrorCode = err instanceof DiscordAPIError ? err.code : null;
@@ -235,7 +235,7 @@ const cron: Cron = {
                         }
 
                         await api.channels.createMessage(config.log_channel_id || channel.channel_id, {
-                            content: `⚠️ There was a problem recreating the <#${channel.channel_id}> channel for the "Channel Recreate" experiment. Please check my permissions - A common issue is permission overwrites that the bot may not have to create itself as a member.`,
+                            content: `⚠️ Hubo un problema al recrear el canal <#${channel.channel_id}> para el experimento "Recrear canal". Revisa mis permisos: un problema común son sobrescrituras de permisos que el bot podría no tener para crearse como miembro.`,
                             allowed_mentions: {},
                         }).catch(err => {
                             const discordErrorCode = err instanceof DiscordAPIError ? err.code : null;

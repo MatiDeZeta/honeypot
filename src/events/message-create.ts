@@ -310,7 +310,7 @@ async function maybeForwardMessage(api: API | API2, guildId: string, channelId: 
         const discordApiError = err instanceof DiscordAPIError ? err : null;
         if (discordApiError && discordApiError.code === 160009) {
             api.channels.createMessage(config.log_channel_id!, {
-                content: `Would forward https://discord.com/channels/${guildId}/${channelId}/${messageId}, but the bot doesn't have permission to Read Message History in that channel.`,
+                content: `Reenviaría https://discord.com/channels/${guildId}/${channelId}/${messageId}, pero el bot no tiene permiso para Leer historial de mensajes en ese canal.`,
                 allowed_mentions: {},
             }).catch(err => console.log(styleText("dim", `Failed to send message about missing permissions to forward to log channel: ${err}`)));
             console.log(styleText("dim", `Failed to forward message to log channel: ${err}`));
@@ -420,12 +420,12 @@ async function logMessage(
             });
         } else if (permissionSkip) {
             await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                content: `⚠️ User <@${userId}> triggered the honeypot, but they are ${permissionSkip === "owner" ? "the **server owner** so I cannot" : "a **server admin** so I won't"} ${config.action} them.\n-# In anycase **ensure my role is higher** than people's highest role and that I have **ban members** permission so I can ${config.action} for actual cases.`,
+                content: `⚠️ El usuario <@${userId}> activó el honeypot, pero ${permissionSkip === "owner" ? "es el **propietario del servidor**, así que no puedo" : "es un **administrador del servidor**, así que no voy a"} aplicarle la acción \`${config.action}\`.\n-# En cualquier caso, **asegúrate de que mi rol esté más arriba** que el rol más alto de los demás y de que tenga el permiso **banear miembros** para poder aplicar \`${config.action}\` en casos reales.`,
                 allowed_mentions: { users: [userId] },
             });
         } else if (failed === "unban" && config.action === "softban") {
             await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                content: `⚠️ User <@${userId}> triggered the honeypot, but I failed to **fully** softban them.\n-# They may still be banned but you can manually unban them in server settings.`,
+                content: `⚠️ El usuario <@${userId}> activó el honeypot, pero no pude aplicarles el softban **completo**.\n-# Puede que siga baneado, pero puedes desbanearlo manualmente en la configuración del servidor.`,
                 allowed_mentions: { users: [userId] },
             });
         } else if (failed === "permissions") {
@@ -434,18 +434,18 @@ async function logMessage(
                 components: [
                     {
                         type: ComponentType.TextDisplay,
-                        content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.`,
+                        content: `⚠️ El usuario <@${userId}> activó el honeypot, pero **no pude** aplicarle la acción \`${config.action}\`.`,
                     },
                     {
                         type: ComponentType.Section,
                         components: [{
                             type: ComponentType.TextDisplay,
-                            content: `-# Please check my permissions to **ensure my role is higher** than their highest role and that I have **ban members** permission.`,
+                            content: `-# Revisa mis permisos para **asegurarte de que mi rol esté más arriba** que su rol más alto y de que tenga el permiso **banear miembros**.`,
                         }],
                         accessory: {
                             type: ComponentType.Button,
                             style: ButtonStyle.Secondary,
-                            label: "Troubleshoot",
+                            label: "Diagnosticar",
                             custom_id: `troubleshoot_ban:${userId}`,
                         }
                     }],
@@ -453,7 +453,7 @@ async function logMessage(
             });
         } else if (failed) {
             await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                content: `⚠️ User <@${userId}> triggered the honeypot, but I **failed** to ${config.action} them.\n-# This could be due to a transient Discord issue, or something unexpected. Please check my permissions in any case.`,
+                content: `⚠️ El usuario <@${userId}> activó el honeypot, pero **no pude** aplicarle la acción \`${config.action}\`.\n-# Esto puede deberse a un problema temporal de Discord o a algo inesperado. Revisa mis permisos en cualquier caso.`,
                 allowed_mentions: { users: [userId] },
             });
         }
@@ -497,4 +497,3 @@ async function updateWarning(
         } else console.log(`Failed to update honeypot message (after banning): ${err}`);
     }
 }
-

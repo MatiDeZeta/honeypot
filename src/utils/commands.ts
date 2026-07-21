@@ -4,7 +4,7 @@ export const commandsPayload: RESTPutAPIApplicationCommandsJSONBody = [
     {
         // this command opens a modal for configuring the honeypot
         name: "honeypot",
-        description: "Configure/setup the honeypot channel and its settings",
+        description: "Configura el canal honeypot y sus ajustes",
         type: ApplicationCommandType.ChatInput,
         options: [],
         default_member_permissions:
@@ -15,7 +15,7 @@ export const commandsPayload: RESTPutAPIApplicationCommandsJSONBody = [
     {
         // this command opens a modal for configuring the messages
         name: "honeypot-messages",
-        description: "Configure the honeypot messages that the bot sends",
+        description: "Configura los mensajes honeypot que envía el bot",
         type: ApplicationCommandType.ChatInput,
         options: [],
         default_member_permissions:
@@ -25,10 +25,9 @@ export const commandsPayload: RESTPutAPIApplicationCommandsJSONBody = [
     },
     {
         name: "stats",
-        description: "See statistics for all servers using honeypot",
+        description: "Mira estadísticas de todos los servidores que usan honeypot",
         type: ApplicationCommandType.ChatInput,
         options: [],
         contexts: [InteractionContextType.BotDM],
     },
 ]
-

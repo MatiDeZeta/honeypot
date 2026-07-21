@@ -7,10 +7,10 @@ export function honeypotWarningMessage(
   customText?: string | null
 ): RESTPostAPIChannelMessageJSONBody {
   const actionTextMap = {
-    ban: { text: 'an immediate ban', label: 'Bans' },
-    softban: { text: 'a softban', label: 'Kicks' },
-    kick: { text: 'a softban', label: 'Kicks' },
-    disabled: { text: 'no action (honeypot is disabled)', label: 'Triggers' }
+    ban: { text: 'un baneo inmediato', label: 'Baneos' },
+    softban: { text: 'un softban', label: 'Expulsiones' },
+    kick: { text: 'un softban', label: 'Expulsiones' },
+    disabled: { text: 'ninguna acción (honeypot está desactivado)', label: 'Activaciones' }
   };
   const { text: actionText, label: labelText } = actionTextMap[action] || actionTextMap.ban!;
   const { text: messageText, imageUrls } = customText ? extractPossibleImages(customText) : { text: null, imageUrls: null };
@@ -28,7 +28,7 @@ export function honeypotWarningMessage(
               {
                 type: ComponentType.TextDisplay,
                 content: messageText?.replace(/\{\{action(:text)?\}\}/g, actionText)
-                  || `## NO ENVÍES MENSAJES EN ESTE CANAL\n\nEste canal se utiliza para detectar bots de spam. Cualquier mensaje que se envíe aquí dará lugar a **${actionText}**.`
+                  || `## No envíes mensajes en este canal\n\nEste canal se utiliza para detectar bots de spam. Cualquier mensaje que se envíe aquí dará lugar a **${actionText}**.`
               }
             ],
             accessory: {
@@ -61,16 +61,16 @@ export function honeypotWarningMessage(
   };
 }
 
-export const defaultHoneypotWarningMessage = "## NO ENVÍES MENSAJES EN ESTE CANAL\n\nEste canal se utiliza para detectar bots de spam. Cualquier mensaje que se envíe aquí dará lugar a **{{action:text}}**.";
+export const defaultHoneypotWarningMessage = "## No envíes mensajes en este canal\n\nEste canal se utiliza para detectar bots de spam. Cualquier mensaje que se envíe aquí dará lugar a **{{action:text}}**.";
 
 const pastTenseActionText = {
-  ban: 'banned',
-  kick: 'kicked',
-  softban: 'kicked',
-  disabled: '???it is disabled???'
+  ban: 'baneado',
+  kick: 'expulsado',
+  softban: 'expulsado',
+  disabled: '???está desactivado???'
 } as const
 export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildName: string, discoverableLink: string | undefined, link: string, reinviteUrl: string | null, isAdmin = false, customText?: string | null): RESTPostAPIChannelMessageJSONBody {
-  const actionText = pastTenseActionText[action] || '???unknown action???';
+  const actionText = pastTenseActionText[action] || '???acción desconocida???';
   const { text: messageText, imageUrls } = customText ? extractPossibleImages(customText) : { text: null, imageUrls: null };
   return {
     flags: MessageFlags.IsComponentsV2,
@@ -92,14 +92,14 @@ export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildNam
                   .replace(/\{\{honeypot:channel:link\}\}/g, link)
                   .replace(/\{\{server:public-link\}\}/g, discoverableLink || "https://discord.com/servers")
                   .replace(/\{\{reinvite:link\}\}/g, reinviteUrl || "<invite link not available>")
-                  || (`## Honeypot Triggered\n\nYou have been **${actionText}** from **${discoverableLink ? `[${guildName}](${discoverableLink})` : guildName}** for sending a message in the [honeypot](${link}) channel.`
-                    + (reinviteUrl ? `\n\nOnce you have sorted out how your account spammed, you can rejoin via ${reinviteUrl}` : "")
+                  || (`## Honeypot activado\n\nHas sido **${actionText}** de **${discoverableLink ? `[${guildName}](${discoverableLink})` : guildName}** por enviar un mensaje en el canal de [honeypot](${link}).`
+                    + (reinviteUrl ? `\n\nCuando hayas resuelto cómo tu cuenta envió spam, puedes volver a unirte desde ${reinviteUrl}` : "")
                   )
               },
               ...((!imageUrls || imageUrls.length == 0) ? [
                 {
                   type: ComponentType.TextDisplay,
-                  content: `-# This is an automated message. Replies are not monitored.`
+                  content: `-# Este es un mensaje automático. Las respuestas no se supervisan.`
                 },
               ] as const : []),
             ],
@@ -117,34 +117,34 @@ export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildNam
             },
             {
               type: ComponentType.TextDisplay,
-              content: `-# This is an automated message. Replies are not monitored.`
+              content: `-# Este es un mensaje automático. Las respuestas no se supervisan.`
             },
           ] as const : []),
         ]
       },
       customText ? {
         type: ComponentType.TextDisplay,
-        content: `-# This is a custom message from the owners of "${guildName}".`
+        content: `-# Este es un mensaje personalizado de los propietarios de "${guildName}".`
       } : isAdmin ? {
         type: ComponentType.TextDisplay,
-        content: `-# This is an example message: as an admin you can’t be ${actionText}.`
+        content: `-# Este es un mensaje de ejemplo: como administrador no puedes ser ${actionText}.`
       } : null,
     ].filter(Boolean) as any[],
   };
 }
 
-export const defaultHoneypotUserDMMessage = "## Honeypot Triggered\n\nYou have been **{{action:text}}** from **{{server:name}}** for sending a message in the [honeypot]({{honeypot:channel:link}}) channel.";
-export const defaultHoneypotUserDMMessageReinvitePart = "\n\nOnce you have sorted out how your account spammed, you can rejoin via {{reinvite:link}}";
+export const defaultHoneypotUserDMMessage = "## Honeypot activado\n\nHas sido **{{action:text}}** de **{{server:name}}** por enviar un mensaje en el canal de [honeypot]({{honeypot:channel:link}}).";
+export const defaultHoneypotUserDMMessageReinvitePart = "\n\nCuando hayas resuelto cómo tu cuenta envió spam, puedes volver a unirte desde {{reinvite:link}}";
 
 export function logActionMessage(userId: string, honeypotChannelId: string, action: HoneypotConfig["action"], customText?: string | null, moderatedCount: number = 0): RESTPostAPIChannelMessageJSONBody {
-  const actionText = pastTenseActionText[action] || '???unknown action???';
+  const actionText = pastTenseActionText[action] || '???acción desconocida???';
   const text = customText
     ?.replace(/\{\{user:id\}\}/g, userId)
     .replace(/\{\{user(:ping|:mention)?\}\}/g, `<@${userId}>`)
     .replace(/\{\{action(:text)?\}\}/g, actionText)
     .replace(/\{\{honeypot:channel(:mention|:ping)?\}\}/g, `<#${honeypotChannelId}>`)
     .replace(/\{\{honeypot:moderation-count\}\}/g, moderatedCount.toLocaleString())
-    || `<@${userId}> was ${actionText} for triggering the honeypot in <#${honeypotChannelId}>\n-# User ID: \`${userId}\``
+    || `<@${userId}> fue ${actionText} por activar el honeypot en <#${honeypotChannelId}>\n-# ID del usuario: \`${userId}\``
 
   if (action !== 'ban') {
     return {
@@ -168,7 +168,7 @@ export function logActionMessage(userId: string, honeypotChannelId: string, acti
         accessory: {
           type: ComponentType.Button,
           style: ButtonStyle.Secondary,
-          label: "Unban",
+          label: "Desbanear",
           custom_id: `unban:${userId}`,
         }
       }
@@ -176,7 +176,7 @@ export function logActionMessage(userId: string, honeypotChannelId: string, acti
   }
 }
 
-export const defaultLogActionMessage = "{{user:mention}} was {{action:text}} for triggering the honeypot in {{honeypot:channel:mention}}\n-# User ID: `{{user:id}}`";
+export const defaultLogActionMessage = "{{user:mention}} fue {{action:text}} por activar el honeypot en {{honeypot:channel:mention}}\n-# ID del usuario: `{{user:id}}`";
 
 
 const imageUrlRegex = /^https:\/\/[^\s\/]+\.[a-zA-Z]{2,}\/[^\s?#]*\.(?:png|jpg|jpeg|gif|webp|avif|mp4|mov)(?:[?#][^\s]*)?$/i;
