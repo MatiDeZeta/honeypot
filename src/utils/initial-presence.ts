@@ -4,8 +4,8 @@ const initialPresence = {
     since: null,
     activities: [
         {
-            name: "#honeypot",
-            state: "Watching #honeypot for bots",
+            name: "#matidzinahoneypot",
+            state: "ok ok ok ok ok ok",
             type: ActivityType.Custom,
         }
     ],
