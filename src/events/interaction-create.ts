@@ -43,19 +43,19 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
 
                 const manyHoneypots = config.experiments.includes("many-honeypots");
                 const experimentOptions = ([
-                    HAS_MESSAGE_INTENT && { label: "Forward Message", value: "forward-message", description: "Forward the triggered message to the log channel", default: config.experiments.includes("forward-message") },
-                    { label: "💡 Reinvite", value: "reinvite", description: "In the DM message give an invite code to rejoin (recommended)", default: config.experiments.includes("reinvite") },
-                    { label: "Timeout First", value: "timeout-first", description: "Timeout users (for 1hr) to limit their activity on rejoin", default: config.experiments.includes("timeout-first") },
+                    HAS_MESSAGE_INTENT && { label: "Reenviar mensaje", value: "forward-message", description: "Reenvía el mensaje activado al canal de registros", default: config.experiments.includes("forward-message") },
+                    { label: "💡 Reinvitar", value: "reinvite", description: "En el MD, envía un código de invitación para volver a unirse (recomendado)", default: config.experiments.includes("reinvite") },
+                    { label: "Aplicar silencio primero", value: "timeout-first", description: "Silencia a usuarios (1 h) para limitar su actividad al volver", default: config.experiments.includes("timeout-first") },
                     // { label: "Timeout for Typing", value: "timeout-for-typing", description: "Timeout users (for 10sec) who are typing in the honeypot channel", default: config.experiments.includes("timeout-for-typing") },
-                    { label: "Channel Warmer", value: "channel-warmer", description: "Keep the honeypot channel active (every day)", default: config.experiments.includes("channel-warmer") },
-                    { label: "Random Channel Name", value: "random-channel-name", description: "Randomize the honeypot channel name (every day)", default: config.experiments.includes("random-channel-name") },
-                    { label: "💡 Only More Recent Delete", value: "only-recent-delete", description: "Only delete last 15min of messages (instead of 1hr)", default: config.experiments.includes("only-recent-delete") },
-                    { label: "No Warning Msg", value: "no-warning-msg", description: "Don’t include the warning message in the #honeypot channel (deletes current if already present)", default: config.experiments.includes("no-warning-msg") },
-                    { label: "No DM", value: "no-dm", description: "Don’t DM the user that they triggered the honeypot", default: config.experiments.includes("no-dm") },
-                    { label: "Random Channel Name (Chaos)", value: "random-channel-name-chaos", description: "Randomise the honeypot channel name with random characters (every day)", default: config.experiments.includes("random-channel-name-chaos") },
-                    hasHoneypotHistory && { label: "⚙️ Recreate Channel", value: "recreate-channel", description: "Remake the honeypot channel (every day) - experiment may be removed & messages aren't preserved", default: config.experiments.includes("recreate-channel") },
-                    { label: "💡 Many Honeypots", value: "many-honeypots", description: "Ability to create multiple honeypot channels - must submit modal and re-run /honeypot to set them", default: config.experiments.includes("many-honeypots") },
-                    HAS_MESSAGE_INTENT && hasHoneypotHistory && { label: "⚙️ Ensure Message Deletion (only use if issues)", value: "ensure-msg-delete", description: "Search & delete leftover messages from moderated users 2min after moderation.", default: config.experiments.includes("ensure-msg-delete") },
+                    { label: "Mantener canal activo", value: "channel-warmer", description: "Mantiene activo el canal honeypot (cada día)", default: config.experiments.includes("channel-warmer") },
+                    { label: "Nombre aleatorio de canal", value: "random-channel-name", description: "Aleatoriza el nombre del canal honeypot (cada día)", default: config.experiments.includes("random-channel-name") },
+                    { label: "💡 Solo borrado reciente", value: "only-recent-delete", description: "Solo borra los últimos 15 min de mensajes (en vez de 1 h)", default: config.experiments.includes("only-recent-delete") },
+                    { label: "Sin mensaje de aviso", value: "no-warning-msg", description: "No incluye el mensaje de aviso en #honeypot (borra el actual si existe)", default: config.experiments.includes("no-warning-msg") },
+                    { label: "Sin MD", value: "no-dm", description: "No envía MD al usuario que activó el honeypot", default: config.experiments.includes("no-dm") },
+                    { label: "Nombre aleatorio de canal (caos)", value: "random-channel-name-chaos", description: "Aleatoriza el nombre del canal honeypot con caracteres aleatorios (cada día)", default: config.experiments.includes("random-channel-name-chaos") },
+                    hasHoneypotHistory && { label: "⚙️ Recrear canal", value: "recreate-channel", description: "Recrea el canal honeypot (cada día): el experimento puede retirarse y los mensajes no se conservan", default: config.experiments.includes("recreate-channel") },
+                    { label: "💡 Varios honeypots", value: "many-honeypots", description: "Permite crear varios canales honeypot; debes enviar el modal y ejecutar /honeypot otra vez para configurarlos", default: config.experiments.includes("many-honeypots") },
+                    HAS_MESSAGE_INTENT && hasHoneypotHistory && { label: "⚙️ Asegurar borrado de mensajes (solo si hay problemas)", value: "ensure-msg-delete", description: "Busca y borra mensajes residuales de usuarios moderados 2 min después de la moderación.", default: config.experiments.includes("ensure-msg-delete") },
                 ] satisfies (APISelectMenuOption | false)[]).filter(e => !!e);
 
                 const modal: APIModalInteractionResponseCallbackData = {
@@ -64,8 +64,8 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     components: [
                         {
                             type: ComponentType.Label,
-                            label: `Honeypot Channel${manyHoneypots ? "s" : ''}`,
-                            description: `Any message sent in ${manyHoneypots ? "these channels" : "this channel"} will cause the author to be kicked/banned from server`,
+                            label: `Canal${manyHoneypots ? "es" : ''} honeypot`,
+                            description: `Cualquier mensaje enviado en ${manyHoneypots ? "estos canales" : "este canal"} hará que su autor sea expulsado/baneado del servidor`,
                             component: {
                                 type: ComponentType.ChannelSelect,
                                 custom_id: "honeypot_channel",
@@ -79,8 +79,8 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         },
                         {
                             type: ComponentType.Label,
-                            label: "Log Channel",
-                            description: "The channel to log events (ie kicks/bans that the bot actioned)",
+                            label: "Canal de registros",
+                            description: "Canal para registrar eventos (p. ej., expulsiones/baneos que aplica el bot)",
                             component: {
                                 type: ComponentType.ChannelSelect,
                                 custom_id: "log_channel",
@@ -94,27 +94,27 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         },
                         {
                             type: ComponentType.Label,
-                            label: "Action",
-                            description: "What should the bot do to message author?",
+                            label: "Acción",
+                            description: "¿Qué debe hacer el bot con el autor del mensaje?",
                             component: {
                                 type: ComponentType.RadioGroup,
                                 custom_id: "honeypot_action",
                                 options: [
-                                    { label: "Softban (kick)", value: "softban", description: "Bans & unbans to delete last 1hr of messages", default: config.action === "softban" || (config.action as any) === "kick" || !config.action },
-                                    { label: "Ban", value: "ban", description: "Permanently bans the user to also delete last 1hr of messages", default: config.action === "ban" },
-                                    { label: "Disabled", value: "disabled", /*description: "Don’t do anything",*/ default: config.action === "disabled" }
+                                    { label: "Softban (expulsión)", value: "softban", description: "Banea y desbanea para borrar la última 1 h de mensajes", default: config.action === "softban" || (config.action as any) === "kick" || !config.action },
+                                    { label: "Baneo", value: "ban", description: "Banea permanentemente al usuario y también borra la última 1 h de mensajes", default: config.action === "ban" },
+                                    { label: "Desactivado", value: "disabled", /*description: "No hacer nada",*/ default: config.action === "disabled" }
                                 ],
                                 required: true,
                             }
                         },
                         {
                             type: ComponentType.Label,
-                            label: "Experiments",
+                            label: "Experimentos",
                             // description: "Some optional experimental features to try out",
                             component: {
                                 type: ComponentType.StringSelect,
                                 custom_id: "honeypot_experiments",
-                                placeholder: "Select experiments to enable",
+                                placeholder: "Selecciona experimentos para activar",
                                 options: experimentOptions,
                                 min_values: 0,
                                 max_values: experimentOptions.length,
@@ -181,7 +181,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
 
                 if (selectedChannelIds.length === 0) {
                     await interactionReply({
-                        content: "At least one honeypot channel is required! No changes have been made.",
+                        content: "¡Se requiere al menos un canal honeypot! No se hicieron cambios.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -212,7 +212,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 if (permissionIssues.length > 0) {
                     await interactionReply({
                         content: (permissionIssues.length > 1 ? permissionIssues.map(e => `- ${e}`).join("\n") : permissionIssues[0])
-                            + "\n-# No settings have been changed.",
+                            + "\n-# No se cambió ninguna configuración.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -247,14 +247,14 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             if (err instanceof DiscordAPIError && (err.code == RESTJSONErrorCodes.MissingAccess || err.code == RESTJSONErrorCodes.MissingPermissions)) {
                                 console.log(styleText("dim", `Error creating/editing honeypot message (interaction handler): ${err}`));
                                 await interactionReply({
-                                    content: `I don’t have access to the honeypot channel <#${channelId}>. Please make sure I have access to that channel and try again (both View Channel and Send Messages permissions).\n-# No settings have been changed.`,
+                                    content: `No tengo acceso al canal honeypot <#${channelId}>. Asegúrate de que tenga acceso a ese canal y vuelve a intentarlo (permisos Ver canal y Enviar mensajes).\n-# No se cambió ninguna configuración.`,
                                     allowed_mentions: {},
                                     flags: MessageFlags.Ephemeral,
                                 });
                             } else {
                                 console.log(`Error creating/editing honeypot message (interaction handler): ${err}`);
                                 await interactionReply({
-                                    content: `There was a problem setting up the honeypot channel <#${channelId}>. Please check my permissions and try again.\n-# No settings have been changed.`,
+                                    content: `Hubo un problema al configurar el canal honeypot <#${channelId}>. Revisa mis permisos y vuelve a intentarlo.\n-# No se cambió ninguna configuración.`,
                                     allowed_mentions: {},
                                     flags: MessageFlags.Ephemeral,
                                 });
@@ -281,7 +281,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 if (logChanged && newConfig.log_channel_id) {
                     try {
                         await api.channels.createMessage(newConfig.log_channel_id, {
-                            content: `Honeypot is set up in ${selectedChannelIds.map(id => `<#${id}>`).join(", ")}! This current channel will log honeypot events.`,
+                            content: `¡Honeypot está configurado en ${selectedChannelIds.map(id => `<#${id}>`).join(", ")}! Este canal registrará los eventos de honeypot.`,
                             allowed_mentions: {},
                         });
                     } catch (err) {
@@ -293,14 +293,14 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         if (err instanceof DiscordAPIError && (err.code == RESTJSONErrorCodes.MissingAccess || err.code == RESTJSONErrorCodes.MissingPermissions)) {
                             console.log(styleText('dim', `Error sending test message to log channel (interaction handler): ${err}`));
                             await interactionReply({
-                                content: `I don't have access to the log channel <#${newConfig.log_channel_id}>. Please make sure I have access to that channel and try again (both View Channel and Send Messages permissions).\n-# No settings have been changed.`,
+                                content: `No tengo acceso al canal de registros <#${newConfig.log_channel_id}>. Asegúrate de que tenga acceso a ese canal y vuelve a intentarlo (permisos Ver canal y Enviar mensajes).\n-# No se cambió ninguna configuración.`,
                                 allowed_mentions: {},
                                 flags: MessageFlags.Ephemeral,
                             });
                         } else {
                             console.log(`Error sending test message to log channel (interaction handler): ${err}`);
                             await interactionReply({
-                                content: `There was a problem sending test message to the log channel <#${newConfig.log_channel_id}>. Please check my permissions and try again.\n-# No settings have been changed.`,
+                                content: `Hubo un problema al enviar el mensaje de prueba al canal de registros <#${newConfig.log_channel_id}>. Revisa mis permisos y vuelve a intentarlo.\n-# No se cambió ninguna configuración.`,
                                 flags: MessageFlags.Ephemeral,
                                 allowed_mentions: {},
                             });
@@ -331,21 +331,21 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         if (errorCode === RESTJSONErrorCodes.MaximumNumberOfInvitesReached) {
                             console.log(styleText("dim", `Error creating invite for reinvite experiment: ${err}`));
                             await interactionReply({
-                                content: `There are too many invites in your server to make one for <#${inviteChannelId}>. Please delete some existing invites and try again.\n-# No settings have been changed.`,
+                                content: `Hay demasiadas invitaciones en tu servidor para crear una para <#${inviteChannelId}>. Elimina algunas invitaciones existentes y vuelve a intentarlo.\n-# No se cambió ninguna configuración.`,
                                 allowed_mentions: {},
                                 flags: MessageFlags.Ephemeral,
                             });
                         } else if (errorCode === RESTJSONErrorCodes.MissingAccess || errorCode === RESTJSONErrorCodes.MissingPermissions) {
                             console.log(styleText("dim", `Error creating invite for reinvite experiment: ${err}`));
                             await interactionReply({
-                                content: `I don't have permission to create invites in the honeypot channel <#${inviteChannelId}>. Please make sure I have the Create Invite permission in that channel and try again.\n-# No settings have been changed.`,
+                                content: `No tengo permiso para crear invitaciones en el canal honeypot <#${inviteChannelId}>. Asegúrate de que tenga el permiso Crear invitación en ese canal y vuelve a intentarlo.\n-# No se cambió ninguna configuración.`,
                                 allowed_mentions: {},
                                 flags: MessageFlags.Ephemeral,
                             });
                         } else {
                             console.log(`Error fetching invite for reinvite experiment: ${err}`);
                             await interactionReply({
-                                content: `There was a problem fetching the invite code for the "Reinvite" experiment. Please check my permissions and try again.\n-# No settings have been changed.`,
+                                content: `Hubo un problema al obtener el código de invitación para el experimento "Reinvitar". Revisa mis permisos y vuelve a intentarlo.\n-# No se cambió ninguna configuración.`,
                                 allowed_mentions: {},
                                 flags: MessageFlags.Ephemeral,
                             });
@@ -388,7 +388,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 // best to be 100% accurate (ie edit from at right time where there is technically another channel chosen)
                 const allChannels = await db.getChannels(guildId);
                 await interactionReply({
-                    content: `Honeypot config updated!\n-# - Channels: ${allChannels.map(c => `<#${c.channel_id}>`).join(", ")}\n-# - Log Channel: ${newConfig.log_channel_id ? `<#${newConfig.log_channel_id}>` : '*(Not set)*'}\n-# - Action: **${newConfig.action}**${newConfig.experiments.length > 0 ? `\n-# - Experiments: ${newConfig.experiments.map(e => `\`${e}\``).join(", ")}` : ''}`,
+                    content: `¡Configuración de honeypot actualizada!\n-# - Canales: ${allChannels.map(c => `<#${c.channel_id}>`).join(", ")}\n-# - Canal de registros: ${newConfig.log_channel_id ? `<#${newConfig.log_channel_id}>` : '*(Sin configurar)*'}\n-# - Acción: **${newConfig.action}**${newConfig.experiments.length > 0 ? `\n-# - Experimentos: ${newConfig.experiments.map(e => `\`${e}\``).join(", ")}` : ''}`,
                     allowed_mentions: {},
                 });
                 if (redis) setSubscribedChannelCache(guildId, allChannels.map(c => c.channel_id), redis);
@@ -407,7 +407,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             await channelWarmerExperiment(api, guildId, id)
                         } catch (err) {
                             api.channels.createMessage(newConfig.log_channel_id || id, {
-                                content: `There was a problem sending a message to the <#${id}> channel for the "Channel Warmer" experiment. Please check my permissions.`,
+                                content: `Hubo un problema al enviar un mensaje al canal <#${id}> para el experimento "Mantener canal activo". Revisa mis permisos.`,
                                 allowed_mentions: {},
                             }).catch(() => null);
                         }
@@ -422,7 +422,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             await randomChannelNameExperiment(api, guildId, id, newConfig.experiments.includes("random-channel-name-chaos"))
                         } catch (err) {
                             api.channels.createMessage(newConfig.log_channel_id || id, {
-                                content: `There was a problem updating the <#${id}> channel for the "Random Channel Name" experiment. Please check my permissions.`,
+                                content: `Hubo un problema al actualizar el canal <#${id}> para el experimento "Nombre aleatorio de canal". Revisa mis permisos.`,
                                 allowed_mentions: {},
                             }).catch(() => null);
                         }
@@ -450,20 +450,20 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 ]);
 
                 const modal: APIModalInteractionResponseCallbackData = {
-                    title: "Honeypot's Messages",
+                    title: "Mensajes de honeypot",
                     custom_id: `honeypot_messages_modal:${userContextHash}`,
                     components: [
                         {
                             type: ComponentType.TextDisplay,
-                            content: "Set custom messages for the honeypot bot:\n" +
-                                "-# - You can use the variables in your messages shown in template/default text - [see all](https://honeypot.riskymh.dev/docs/configuration#message-variables)\n" +
-                                "-# - If you leave the textbox empty, then it'll reset to default\n" +
-                                "-# - Make sure to keep the messages clear and informative!"
+                            content: "Configura mensajes personalizados para el bot honeypot:\n" +
+                                "-# - Puedes usar las variables que aparecen en el texto de plantilla/predeterminado de tus mensajes - [ver todas](https://honeypot.riskymh.dev/docs/configuration#message-variables)\n" +
+                                "-# - Si dejas el cuadro de texto vacío, se restablecerá al valor predeterminado\n" +
+                                "-# - Asegúrate de que los mensajes sean claros e informativos"
                         },
                         {
                             type: ComponentType.Label,
-                            label: "Honeypot Warning",
-                            description: "This is the message shown in the honeypot channel",
+                            label: "Aviso de honeypot",
+                            description: "Este es el mensaje que se muestra en el canal honeypot",
                             component: {
                                 type: ComponentType.TextInput,
                                 custom_id: "honeypot_warning",
@@ -476,8 +476,8 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         },
                         {
                             type: ComponentType.Label,
-                            label: "Honeypot DM Message",
-                            description: "This is the message sent to users via DM when they trigger the honeypot",
+                            label: "Mensaje por MD de honeypot",
+                            description: "Este es el mensaje que se envía por MD a usuarios cuando activan el honeypot",
                             component: {
                                 type: ComponentType.TextInput,
                                 custom_id: "honeypot_dm_message",
@@ -490,8 +490,8 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         },
                         {
                             type: ComponentType.Label,
-                            label: "Log Message",
-                            description: "This is the message shown in the log channel",
+                            label: "Mensaje de registro",
+                            description: "Este es el mensaje que se muestra en el canal de registros",
                             component: {
                                 type: ComponentType.TextInput,
                                 custom_id: "log_message",
@@ -504,8 +504,8 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         },
                         {
                             type: ComponentType.Label,
-                            label: "Reset All Messages",
-                            description: "Nothing you changed here will persist. This will reset all messages to their default values.",
+                            label: "Restablecer todos los mensajes",
+                            description: "Nada de lo que cambies aquí se guardará. Esto restablecerá todos los mensajes a sus valores predeterminados.",
                             component: {
                                 type: ComponentType.Checkbox,
                                 custom_id: "reset_messages",
@@ -565,7 +565,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 const logMsgSus = newMessages.log_message ? containsBadWord(newMessages.log_message) : false;
                 if (warningMsgSus || dmMsgSus || logMsgSus) {
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: `One or more of your messages contain words that are not allowed on Discord. Please remove any inappropriate language and try again.\n-# No changes have been saved.`,
+                        content: `Uno o más de tus mensajes contienen palabras que no están permitidas en Discord. Elimina cualquier lenguaje inapropiado y vuelve a intentarlo.\n-# No se guardó ningún cambio.`,
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -576,7 +576,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 const logMsgMustIncludeOneOf = ["{{user:mention}}", "{{user:ping}}", "{{user:id}}"];
                 if (newMessages.log_message && !logMsgMustIncludeOneOf.some(variable => newMessages.log_message!.includes(variable))) {
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: `The log message must contain the variable \`{{user:mention}}\` to show the user that triggered the honeypot. Please include that variable in your log message and try again.\n-# No changes have been saved.`,
+                        content: `El mensaje de registro debe incluir la variable \`{{user:mention}}\` para mostrar al usuario que activó el honeypot. Incluye esa variable en tu mensaje de registro y vuelve a intentarlo.\n-# No se guardó ningún cambio.`,
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -588,18 +588,18 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     components: [
                         {
                             type: ComponentType.TextDisplay,
-                            content: "**Honeypot messages updated!**",
+                            content: "**¡Mensajes de honeypot actualizados!**",
                         },
                         {
                             type: ComponentType.Section,
                             components: [{
                                 type: ComponentType.TextDisplay,
-                                content: newMessages.warning_message ? "Honeypot Warning Message" : "Honeypot Warning Message\n-# *(Using default)*",
+                                content: newMessages.warning_message ? "Mensaje de aviso de honeypot" : "Mensaje de aviso de honeypot\n-# *(Usando predeterminado)*",
                             }],
                             accessory: {
                                 type: ComponentType.Button,
                                 style: ButtonStyle.Secondary,
-                                label: "Preview Warning",
+                                label: "Previsualizar aviso",
                                 custom_id: newMessages.warning_message ? "preview_message:warning:#1" : "preview_message:warning",
                             }
                         },
@@ -615,12 +615,12 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             type: ComponentType.Section,
                             components: [{
                                 type: ComponentType.TextDisplay,
-                                content: newMessages.dm_message ? "DM Message" : "DM Message\n-# *(Using default)*",
+                                content: newMessages.dm_message ? "Mensaje por MD" : "Mensaje por MD\n-# *(Usando predeterminado)*",
                             }],
                             accessory: {
                                 type: ComponentType.Button,
                                 style: ButtonStyle.Secondary,
-                                label: "Preview DM",
+                                label: "Previsualizar MD",
                                 custom_id: newMessages.dm_message ? "preview_message:dm:#2" : "preview_message:dm",
                             }
                         },
@@ -636,12 +636,12 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             type: ComponentType.Section,
                             components: [{
                                 type: ComponentType.TextDisplay,
-                                content: newMessages.log_message ? "Log Message" : "Log Message\n-# *(Using default)*",
+                                content: newMessages.log_message ? "Mensaje de registro" : "Mensaje de registro\n-# *(Usando predeterminado)*",
                             }],
                             accessory: {
                                 type: ComponentType.Button,
                                 style: ButtonStyle.Secondary,
-                                label: "Preview Log",
+                                label: "Previsualizar registro",
                                 custom_id: newMessages.log_message ? "preview_message:log:#3" : "preview_message:log",
                             }
                         },
@@ -682,14 +682,14 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             if (err instanceof DiscordAPIError && (err.code == RESTJSONErrorCodes.MissingAccess || err.code == RESTJSONErrorCodes.MissingPermissions)) {
                                 console.log(styleText('dim', `Error updating honeypot warning message (interaction handler): ${err}`));
                                 await api.interactions.followUp(interaction.id, interaction.token, {
-                                    content: `I don't have access to the honeypot channel <#${msgChannel.channel_id}> to update the warning message. Please make sure I have access to that channel and try again (both View Channel and Send Messages permissions).\n-# Your custom messages have still been saved though.`,
+                                    content: `No tengo acceso al canal honeypot <#${msgChannel.channel_id}> para actualizar el mensaje de aviso. Asegúrate de que tenga acceso a ese canal y vuelve a intentarlo (permisos Ver canal y Enviar mensajes).\n-# Tus mensajes personalizados sí se guardaron.`,
                                     allowed_mentions: {},
                                     flags: MessageFlags.Ephemeral,
                                 });
                             } else {
                                 console.log(`Error updating honeypot warning message (interaction handler): ${err}`);
                                 await api.interactions.followUp(interaction.id, interaction.token, {
-                                    content: `There was a problem updating the honeypot warning message in <#${msgChannel.channel_id}>. Please check my permissions and your custom message.\n-# Your custom messages have still been saved though.`,
+                                    content: `Hubo un problema al actualizar el mensaje de aviso de honeypot en <#${msgChannel.channel_id}>. Revisa mis permisos y tu mensaje personalizado.\n-# Tus mensajes personalizados sí se guardaron.`,
                                     allowed_mentions: {},
                                     flags: MessageFlags.Ephemeral,
                                 });
@@ -723,16 +723,16 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                                 {
                                     type: ComponentType.TextDisplay,
                                     content: [
-                                        `## ${CUSTOM_EMOJI} Honeypot Bot Statistics ${CUSTOM_EMOJI}`,
+                                        `## ${CUSTOM_EMOJI} Estadísticas del bot Honeypot ${CUSTOM_EMOJI}`,
                                         "",
-                                        `Total servers: \`${totalGuilds.toLocaleString()}\``,
-                                        `Total moderations: \`${totalModerated.toLocaleString()}\``,
-                                        `Times you've been #honeypot'd: \`${(userModeratedCount || 0).toLocaleString()}\``,
+                                        `Total de servidores: \`${totalGuilds.toLocaleString()}\``,
+                                        `Total de moderaciones: \`${totalModerated.toLocaleString()}\``,
+                                        `Veces que te atrapó #honeypot: \`${(userModeratedCount || 0).toLocaleString()}\``,
                                     ].join("\n"),
                                 },
                                 {
                                     type: ComponentType.TextDisplay,
-                                    content: "-# Thank you for using [Honeypot Bot](https://honeypot.riskymh.dev) to keep your servers safe from unwanted bots!"
+                                    content: "-# ¡Gracias por usar [Honeypot Bot](https://honeypot.riskymh.dev) para mantener tus servidores seguros frente a bots no deseados!"
                                 },
                                 {
                                     type: ComponentType.ActionRow,
@@ -741,14 +741,14 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                                             type: ComponentType.Button,
                                             url: `https://discord.com/oauth2/authorize?client_id=${interaction.application_id}`,
                                             style: ButtonStyle.Link,
-                                            label: "Invite Bot",
+                                            label: "Invitar bot",
                                             emoji: { name: "honeypot", id: CUSTOM_EMOJI_ID }
                                         },
                                         {
                                             type: ComponentType.Button,
                                             url: "https://discord.gg/wYZa4Fpwfy",
                                             style: ButtonStyle.Link,
-                                            label: "Support Server"
+                                            label: "Servidor de soporte"
                                         },
                                         {
                                             type: ComponentType.Button,
@@ -789,30 +789,30 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             components: [
                                 {
                                     type: ComponentType.TextDisplay,
-                                    content: `## ${CUSTOM_EMOJI} Honeypot Statistics ${CUSTOM_EMOJI}`,
+                                    content: `## ${CUSTOM_EMOJI} Estadísticas de honeypot ${CUSTOM_EMOJI}`,
                                 },
                                 {
                                     type: ComponentType.TextDisplay,
                                     content: [
-                                        "**Server Stats:**",
-                                        `Total moderated in this server: \`${totalInGuild.toLocaleString()}\``,
+                                        "**Estadísticas del servidor:**",
+                                        `Total moderado en este servidor: \`${totalInGuild.toLocaleString()}\``,
                                         ...(Object.keys(guildStatsMapping).length === 1 ? ""
                                             : channels.map(chan => `-# - <#${chan.channel_id}>: \`${guildStatsMapping[chan.channel_id]?.toLocaleString() || 0}\``)),
                                         channelLessStats && channelLessStats > 0 && guildStats.length > 1
-                                            ? `-# - *Removed honeypots*: \`${channelLessStats.toLocaleString()}\`` : ""
+                                            ? `-# - *Honeypots eliminados*: \`${channelLessStats.toLocaleString()}\`` : ""
                                     ].join("\n"),
                                 },
                                 {
                                     type: ComponentType.TextDisplay,
                                     content: [
-                                        "**Global Stats:**",
-                                        `Total servers: \`${totalGuilds.toLocaleString()}\``,
-                                        `Total moderations: \`${totalModerated.toLocaleString()}\``,
+                                        "**Estadísticas globales:**",
+                                        `Total de servidores: \`${totalGuilds.toLocaleString()}\``,
+                                        `Total de moderaciones: \`${totalModerated.toLocaleString()}\``,
                                     ].join("\n"),
                                 },
                                 {
                                     type: ComponentType.TextDisplay,
-                                    content: "-# Thank you for using [Honeypot Bot](https://honeypot.riskymh.dev) to keep your servers safe from unwanted bots!"
+                                    content: "-# ¡Gracias por usar [Honeypot Bot](https://honeypot.riskymh.dev) para mantener tus servidores seguros frente a bots no deseados!"
                                 },
                                 {
                                     type: ComponentType.ActionRow,
@@ -821,20 +821,20 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                                             type: ComponentType.Button,
                                             url: `https://discord.com/oauth2/authorize?client_id=${interaction.application_id}`,
                                             style: ButtonStyle.Link,
-                                            label: "Invite Bot",
+                                            label: "Invitar bot",
                                             emoji: { name: "honeypot", id: CUSTOM_EMOJI_ID }
                                         },
                                         {
                                             type: ComponentType.Button,
                                             url: "https://honeypot.riskymh.dev/docs",
                                             style: ButtonStyle.Link,
-                                            label: "Documentation"
+                                            label: "Documentación"
                                         },
                                         {
                                             type: ComponentType.Button,
                                             url: "https://honeypot.riskymh.dev/#stats",
                                             style: ButtonStyle.Link,
-                                            label: "Live Stats"
+                                            label: "Estadísticas en vivo"
                                         },
                                     ]
                                 },
@@ -848,7 +848,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
             else if (guildId && interaction.type === InteractionType.MessageComponent && interaction.data.custom_id === "delete_intro_message") {
                 if (!interaction.member?.permissions || !hasPermission(BigInt(interaction.member.permissions), PermissionFlagsBits.ManageMessages)) {
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: "You need the Manage Messages permission to delete this message.",
+                        content: "Necesitas el permiso Gestionar mensajes para eliminar este mensaje.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -864,7 +864,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
             else if (guildId && interaction.type === InteractionType.MessageComponent && interaction.data.custom_id.startsWith("unban:")) {
                 if (!interaction.member?.permissions || !hasPermission(BigInt(interaction.member.permissions), PermissionFlagsBits.BanMembers)) {
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: "You need the Ban Members permission to unban this user.",
+                        content: "Necesitas el permiso Banear miembros para desbanear a este usuario.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -872,7 +872,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 }
                 if (!interaction.app_permissions || !hasPermission(BigInt(interaction.app_permissions), PermissionFlagsBits.BanMembers)) {
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: "I need the Ban Members permission to unban this user.",
+                        content: "Necesito el permiso Banear miembros para desbanear a este usuario.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -882,7 +882,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 const messageAge = Date.now() - new Date(interaction.message.timestamp).getTime();
                 if (messageAge > 24 * 60 * 60 * 1000) {
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: "This unban button has expired because it's been more than 24 hours since the user was banned. Please use the regular bans tab in member settings.",
+                        content: "Este botón de desbaneo caducó porque pasaron más de 24 horas desde que se baneó al usuario. Usa la pestaña normal de baneos en la configuración de miembros.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -896,7 +896,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 } catch (err) {
                     if (err instanceof DiscordAPIError && err.code === RESTJSONErrorCodes.UnknownBan) {
                         await api.interactions.reply(interaction.id, interaction.token, {
-                            content: "This user is not currently banned.",
+                            content: "Este usuario no está baneado actualmente.",
                             allowed_mentions: {},
                             flags: MessageFlags.Ephemeral,
                         });
@@ -905,7 +905,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
 
                     console.log(`Error unbanning user: ${err}`);
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: "There was a problem unbanning the user. Please check my permissions and try again.",
+                        content: "Hubo un problema al desbanear al usuario. Revisa mis permisos y vuelve a intentarlo.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -913,7 +913,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 }
 
                 await api.interactions.reply(interaction.id, interaction.token, {
-                    content: `User <@${userIdToUnban}> has been unbanned by <@${interaction.member.user.id}>!`,
+                    content: `¡El usuario <@${userIdToUnban}> fue desbaneado por <@${interaction.member.user.id}>!`,
                     allowed_mentions: {},
                 });
             }
@@ -922,7 +922,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
             else if (guildId && interaction.type === InteractionType.MessageComponent && interaction.data.custom_id.startsWith("troubleshoot_ban:")) {
                 if (!interaction.member?.permissions || !hasPermission(BigInt(interaction.member.permissions), PermissionFlagsBits.BanMembers)) {
                     await api.interactions.reply(interaction.id, interaction.token, {
-                        content: "You need the Ban Members permission see the troubleshooting information.",
+                        content: "Necesitas el permiso Banear miembros para ver la información de diagnóstico.",
                         allowed_mentions: {},
                         flags: MessageFlags.Ephemeral,
                     });
@@ -950,15 +950,15 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                 await api.interactions.reply(interaction.id, interaction.token, {
                     flags: MessageFlags.Ephemeral,
                     allowed_mentions: {},
-                    content: trim(`## Troubleshooting Ban Permissions
-Checking whether <@${interaction.application_id}> has the correct permissions to ban <@${userIdToCheck}> in this server.
+                    content: trim(`## Diagnóstico de permisos de baneo
+Comprobando si <@${interaction.application_id}> tiene los permisos correctos para banear a <@${userIdToCheck}> en este servidor.
 
-**Permissions:**
--# - Bot has Ban Members: **${hasPermission(botPermissions, PermissionFlagsBits.BanMembers) ? "Yes" : "No"}**
--# - User doesn't have Admin: **${!(hasPermission(userPermissions, PermissionFlagsBits.Administrator)) ? "Yes" : "No"}**
+**Permisos:**
+-# - El bot tiene Banear miembros: **${hasPermission(botPermissions, PermissionFlagsBits.BanMembers) ? "Sí" : "No"}**
+-# - El usuario no tiene Administrador: **${!(hasPermission(userPermissions, PermissionFlagsBits.Administrator)) ? "Sí" : "No"}**
 
-**Roles:** (in order of position, highest first)
-${roleInfo.map(r => `-# - <@&${r.id}> ${r.isUser ? " **[user]**" : ""}${r.isBot ? " **[bot]**" : ""}`).join("\n") || "-# *(none)*"}
+**Roles:** (ordenados por posición, de mayor a menor)
+${roleInfo.map(r => `-# - <@&${r.id}> ${r.isUser ? " **[usuario]**" : ""}${r.isBot ? " **[bot]**" : ""}`).join("\n") || "-# *(ninguno)*"}
 
 `, 2000),
                 });
@@ -1012,7 +1012,7 @@ ${roleInfo.map(r => `-# - <@&${r.id}> ${r.isUser ? " **[user]**" : ""}${r.isBot 
                     await replyEphemeral(logActionMessage(userId, channelId, config?.action || "softban", messageContent, 0));
                 } else {
                     await replyEphemeral({
-                        content: "Unknown message type for preview.",
+                        content: "Tipo de mensaje desconocido para la previsualización.",
                         allowed_mentions: {},
                     });
                 }
@@ -1051,25 +1051,25 @@ function validateConfigPermissions(
         const appPerms = BigInt(ch(id)?.app_permissions || "0");
 
         need(hasPermission(userPerms, channelPerms),
-            `You don’t have enough permissions to set the honeypot channel to <#${id}>. You need the following permissions in that channel: Send Messages, View Channel, Manage Messages, Manage Channels.`);
+            `No tienes permisos suficientes para establecer <#${id}> como canal honeypot. Necesitas estos permisos en ese canal: Enviar mensajes, Ver canal, Gestionar mensajes, Gestionar canales.`);
         need(hasPermission(appPerms, PermissionFlagsBits.ViewChannel | PermissionFlagsBits.SendMessages),
-            `I don’t have enough permissions to set the honeypot channel to <#${id}>. I need the following permissions in that channel: View Channel, Send Messages.`);
+            `No tengo permisos suficientes para establecer <#${id}> como canal honeypot. Necesito estos permisos en ese canal: Ver canal, Enviar mensajes.`);
 
         if (config.experiments.includes("random-channel-name") || config.experiments.includes("random-channel-name-chaos")) {
             need(hasPermission(appPerms, PermissionFlagsBits.ManageChannels),
-                `I need the Manage Channels permission in <#${id}> to enable the “Random Channel Name” experiment.`);
+                `Necesito el permiso Gestionar canales en <#${id}> para activar el experimento “Nombre aleatorio de canal”.`);
         }
         if (config.experiments.includes("recreate-channel")) {
             need(hasPermission(appPerms, PermissionFlagsBits.ManageChannels),
-                `I need the Manage Channels permission in <#${id}> (and globally) to enable the “Channel Recreate” experiment.`);
+                `Necesito el permiso Gestionar canales en <#${id}> (y globalmente) para activar el experimento “Recrear canal”.`);
         }
         if (config.experiments.includes("forward-message")) {
             need(hasPermission(appPerms, PermissionFlagsBits.ReadMessageHistory),
-                `I need the Read Message History permission in <#${id}> to enable the “Forward Message” experiment.`);
+                `Necesito el permiso Leer historial de mensajes en <#${id}> para activar el experimento “Reenviar mensaje”.`);
         }
         if (config.experiments.includes("ensure-msg-delete")) {
             need(hasPermission(appPerms, PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ReadMessageHistory),
-                `I need the Manage Messages and Read Message History permissions in <#${id}> (and other channels) to enable the “Ensure Message Delete” experiment.`);
+                `Necesito los permisos Gestionar mensajes y Leer historial de mensajes en <#${id}> (y otros canales) para activar el experimento “Asegurar borrado de mensajes”.`);
         }
     }
 
@@ -1078,53 +1078,53 @@ function validateConfigPermissions(
         const logPerms = PermissionFlagsBits.SendMessages | PermissionFlagsBits.ViewChannel;
 
         need(hasPermission(BigInt(logCh?.permissions || "0"), logPerms),
-            `You don’t have enough permissions to set the log channel to <#${config.log_channel_id}>. You need the following permissions in that channel: Send Messages, View Channel.`);
+            `No tienes permisos suficientes para establecer <#${config.log_channel_id}> como canal de registros. Necesitas estos permisos en ese canal: Enviar mensajes, Ver canal.`);
         need(hasPermission(BigInt(logCh?.app_permissions || "0"), logPerms),
-            `I don’t have enough permissions to set the log channel to <#${config.log_channel_id}>. I need the following permissions in that channel: Send Messages, View Channel.`);
+            `No tengo permisos suficientes para establecer <#${config.log_channel_id}> como canal de registros. Necesito estos permisos en ese canal: Enviar mensajes, Ver canal.`);
 
         // @ts-expect-error - nsfw prop does exist, not sure why not documented
         if (config.experiments.includes("forward-message") && logCh && !logCh.nsfw) {
             // @ts-expect-error - nsfw prop does exist, not sure why not documented
             const nsfwChannels = channels.filter(id => ch(id)?.nsfw === true);
             if (nsfwChannels.length > 0) {
-                issue(`<#${config.log_channel_id}> is not marked as NSFW, but the following honeypot channels are: ${nsfwChannels.map(id => `<#${id}>`).join(", ")}. You cannot forward messages from NSFW channels to a non-NSFW channel.`);
+                issue(`<#${config.log_channel_id}> no está marcado como NSFW, pero los siguientes canales honeypot sí: ${nsfwChannels.map(id => `<#${id}>`).join(", ")}. No puedes reenviar mensajes desde canales NSFW a un canal que no sea NSFW.`);
             }
             need(hasPermission(BigInt(logCh?.app_permissions || "0"), PermissionFlagsBits.AttachFiles),
-                `I need the Attach Files permission in <#${config.log_channel_id}> to enable the “Forward Message” experiment.`);
+                `Necesito el permiso Adjuntar archivos en <#${config.log_channel_id}> para activar el experimento “Reenviar mensaje”.`);
         }
     }
 
     const banActions = ["ban", "softban"];
     if (banActions.includes(config.action)) {
         need(!memberPermissions || hasPermission(BigInt(memberPermissions), PermissionFlagsBits.BanMembers),
-            `You need the Ban Members permission to set the honeypot action to “${config.action}”.`);
+            `Necesitas el permiso Banear miembros para establecer la acción de honeypot en “${config.action}”.`);
         need(hasPermission(BigInt(appPermissions), PermissionFlagsBits.BanMembers),
-            `I need the Ban Members permission to set the honeypot action to “${config.action}”.`);
+            `Necesito el permiso Banear miembros para establecer la acción de honeypot en “${config.action}”.`);
     }
 
     if (config.experiments.includes("reinvite") && channels[0]!) {
         const inviteCh = ch(channels[0]);
         need(!inviteCh || hasPermission(BigInt(inviteCh.permissions), PermissionFlagsBits.CreateInstantInvite),
-            `You need the Create Invite permission in <#${inviteCh?.id}> to enable the “Reinvite” experiment.`);
+            `Necesitas el permiso Crear invitación en <#${inviteCh?.id}> para activar el experimento “Reinvitar”.`);
         need(!inviteCh || hasPermission(BigInt(inviteCh.app_permissions || "0"), PermissionFlagsBits.CreateInstantInvite),
-            `I need the Create Invite permission in <#${inviteCh?.id}> to enable the “Reinvite” experiment.`);
+            `Necesito el permiso Crear invitación en <#${inviteCh?.id}> para activar el experimento “Reinvitar”.`);
     }
 
     if (config.experiments.includes("timeout-first")) {
         need(!memberPermissions || hasPermission(BigInt(memberPermissions), PermissionFlagsBits.ModerateMembers),
-            `You need the Timeout Members permission to enable the “Timeout First” experiment.`);
+            `Necesitas el permiso Silenciar miembros para activar el experimento “Aplicar silencio primero”.`);
         need(hasPermission(BigInt(appPermissions), PermissionFlagsBits.ModerateMembers),
-            `I need the Timeout Members permission to enable the “Timeout First” experiment.`);
+            `Necesito el permiso Silenciar miembros para activar el experimento “Aplicar silencio primero”.`);
     }
 
     if (config.experiments.includes("no-dm") && config.experiments.includes("reinvite")) {
-        issue(`“No DM” and “Reinvite” experiments are mutually exclusive.`);
+        issue(`Los experimentos “Sin MD” y “Reinvitar” son mutuamente excluyentes.`);
     }
     if (config.experiments.includes("forward-message") && config.experiments.includes("ensure-msg-delete")) {
-        issue(`“Forward Message” and “Ensure Message Delete” experiments are mutually exclusive.`);
+        issue(`Los experimentos “Reenviar mensaje” y “Asegurar borrado de mensajes” son mutuamente excluyentes.`);
     }
     if (config.experiments.includes("forward-message") && !config.log_channel_id) {
-        issue(`“Forward Message” experiment requires a log channel to be set.`);
+        issue(`El experimento “Reenviar mensaje” requiere que haya un canal de registros configurado.`);
     }
 
     return errors;

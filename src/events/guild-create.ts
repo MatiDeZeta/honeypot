@@ -69,7 +69,7 @@ const handler: EventHandler<GatewayDispatchEvents.GuildCreate> = {
             if (!setupSuccess && guild.system_channel_id) {
                 try {
                     await api.channels.createMessage(guild.system_channel_id, {
-                        content: `👋 Thanks for adding the honeypot bot! Please run /honeypot to finish setup.\n-# The bot couldn’t create or send the warning message automatically.`,
+                        content: `👋 ¡Gracias por añadir el bot honeypot! Ejecuta /honeypot para terminar la configuración.\n-# El bot no pudo crear o enviar el mensaje de aviso automáticamente.`,
                         allowed_mentions: {}
                     });
                 } catch (err) {
@@ -184,14 +184,14 @@ async function sendIntroMessage(api: API | API2, redis: Bun.RedisClient | undefi
             {
                 type: ComponentType.TextDisplay,
                 content: `
-## 👋 Welcome to the honeypot channel! 
-- By default, any user that sends a message in this channel will be **automatically softbanned** (banned and instantly unbanned to delete last 1hr messages)
-- You can customise this and more with the ${getCommandMention("honeypot")} command and the custom messages it sends with ${getCommandMention("honeypot-messages")}!
-- **Tips for maximum effectiveness:**
-  - Rename this channel to something unique (e.g., \`${newName}\`) so bots can’t easily guess and blacklist it, but keep it clear for real members
-  - Keep it near the top of your channel list - bots often target the first few channels
-  - Make sure the bot’s highest role is set above any self-assignable roles, so it can act on all users
-- If you have feedback or notice bots bypassing the honeypot, join our [support server](https://discord.gg/wYZa4Fpwfy) or checkout out the [docs](https://honeypot.riskymh.dev/docs) and the open source [github repo](https://github.com/riskymh/honeypot)!
+## 👋 ¡Bienvenido al canal honeypot!
+- De forma predeterminada, cualquier usuario que envíe un mensaje en este canal será **softbaneado automáticamente** (baneado y desbaneado al instante para borrar los mensajes de la última 1 h)
+- Puedes personalizar esto y más con el comando ${getCommandMention("honeypot")} y los mensajes personalizados que envía con ${getCommandMention("honeypot-messages")}.
+- **Consejos para máxima efectividad:**
+  - Renombra este canal con algo único (p. ej., \`${newName}\`) para que los bots no puedan adivinarlo y bloquearlo fácilmente, pero mantenlo claro para miembros reales
+  - Mantenlo cerca de la parte superior de tu lista de canales: los bots suelen apuntar a los primeros canales
+  - Asegúrate de que el rol más alto del bot esté por encima de cualquier rol autoasignable, para que pueda actuar sobre todos los usuarios
+- Si tienes sugerencias o notas que bots evaden el honeypot, únete a nuestro [servidor de soporte](https://discord.gg/wYZa4Fpwfy) o revisa la [documentación](https://honeypot.riskymh.dev/docs) y el [repositorio de GitHub](https://github.com/riskymh/honeypot).
 `.trim()
             },
             {
@@ -199,13 +199,13 @@ async function sendIntroMessage(api: API | API2, redis: Bun.RedisClient | undefi
                 components: [
                     {
                         type: ComponentType.TextDisplay,
-                        content: `-# This message will delete ${inDiscordTimeString}`
+                        content: `-# Este mensaje se eliminará ${inDiscordTimeString}`
                     }
                 ],
                 accessory: {
                     type: ComponentType.Button,
                     style: ButtonStyle.Secondary,
-                    label: "Delete message now",
+                    label: "Eliminar mensaje ahora",
                     custom_id: "delete_intro_message",
                 }
             },
@@ -240,10 +240,10 @@ async function checkSetupAndWarn(api: API | API2, channelId: string, application
 
     if (anyRoleHasMostMembers || !canBan /*|| !canEveryoneViewChannel*/ || !canEveryoneAttachFiles) {
         let content = "";
-        if (anyRoleHasMostMembers) content += "\n- There is a role that’s higher than the bot’s with >65% of the members";
-        if (!canBan) content += "\n- The bot doesn’t have permission to ban members, which means it can’t softban anyone";
+        if (anyRoleHasMostMembers) content += "\n- Hay un rol por encima del bot con >65% de los miembros";
+        if (!canBan) content += "\n- El bot no tiene permiso para banear miembros, así que no puede aplicar softban a nadie";
         // if (!canEveryoneViewChannel) content += "\n- The @everyone role can’t view the honeypot channel, which means most members can’t send any messages here";
-        if (!canEveryoneAttachFiles) content += "\n- The @everyone role can’t attach files here, which means many spam bots that use attachments won’t be caught";
+        if (!canEveryoneAttachFiles) content += "\n- El rol @everyone no puede adjuntar archivos aquí, así que muchos bots de spam que usan adjuntos no serán detectados";
 
         const msg = await api.channels.createMessage(channelId!, {
             components: [
@@ -256,13 +256,13 @@ async function checkSetupAndWarn(api: API | API2, channelId: string, application
                             components: [
                                 {
                                     type: ComponentType.TextDisplay,
-                                    content: "### \\⚠️  Some potential problems were detected:",
+                                    content: "### \\⚠️  Se detectaron algunos posibles problemas:",
                                 },
                             ],
                             accessory: {
                                 type: ComponentType.Button,
                                 style: ButtonStyle.Secondary,
-                                label: "Dismiss",
+                                label: "Descartar",
                                 custom_id: "delete_intro_message",
                             }
                         },
