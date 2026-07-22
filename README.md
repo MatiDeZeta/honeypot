@@ -31,15 +31,24 @@ Spammers and compromised accounts often target all channels at once, especially 
 
 Options you can enable to avoid the bots better [**ⓘ**](https://honeypot.riskymh.dev/docs/configuration#experiments)
 
-1. **Channel Warmer:** Keep the honeypot channel active (every day)
-2. **Random Channel Name:** Randomize the honeypot channel name (every day)
-3. **Random Channel Name (chaos):** Randomize the honeypot channel name with random characters (every day)
+1. 💡 **Forward Message:** Send the incriminating message to the log channel.
+2. **Reinvite:** In DM message include a link to be able to rejoin
 4. **No Warning Msg:** Don’t include a warning message in the #honeypot channel
 5. **No DM:** Don’t DM the user that they triggered the honeypot
-6. **Reinvite:** In DM message include a link to be able to rejoin
-7. **Timeout First:** Before banning/kicking, timeout user for 1hr (will persist when they rejoin)
-8. **Only More Recent Delete:** Instead of deleting last 1hr, only do 15min
-9. **Many Honeypots:** Create multiple honeypot channels to increase chances of usage
+6. **Channel Warmer:** Keep the honeypot channel active (every day)
+7. **Random Channel Name:** Randomize the honeypot channel name (every day)
+8. **Random Channel Name (chaos):** Randomize the honeypot channel name with random characters (every day)
+9. ⚙️ **Recreate Channel:** Remake the honeypot channel (every day)
+10. **Timeout First:** Before banning/kicking, timeout user for 1hr (will persist when they rejoin)
+11. 💡 **Only More Recent Delete:** Instead of deleting last 1hr, only do 15min
+12. 💡 **Many Honeypots:** Create multiple honeypot channels to increase chances of usage
+13. ⚙️ **Ensure Message Deletion:** Search & delete leftover messages from moderated users 2 min after moderation
+
+<sub>
+
+**Legend:** 💡 recommended features · ⚙️ advanced, only use if you're seeing issues (may need 1+ bans to see)
+
+</sub>
 
 ### Tips to Maximize Honeypot Bot’s Effectiveness
 
@@ -66,3 +75,11 @@ $ bun start # or `bun dev`
 * `docker compose up -d` (using `ghcr.io/riskymh/honeypot`)
 
 Or you can just use my hosted version by inviting it to your server: [Invite Link](https://discord.com/oauth2/authorize?client_id=1450060292716494940)
+
+
+<sub>
+
+---
+© [RiskyMH](https://riskymh.dev) 2026
+
+</sub>
