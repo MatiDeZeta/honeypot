@@ -89,7 +89,7 @@ export async function randomChannelNameExperiment(api: API | API2, guildId: stri
             newName += chars.charAt(Math.floor(Math.random() * chars.length));
         }
     } else {
-        const randomNames = Array.isArray(randomChannelNames) ? randomChannelNames : ["honeypot"]
+        const randomNames = Array.isArray(randomChannelNames) ? randomChannelNames : ["イ・hmhm-matidz"]
         newName = randomNames[Math.floor(Math.random() * randomNames.length)];
     }
     await api.channels.edit(
@@ -112,7 +112,7 @@ async function channelRecreateExperiment(api: API | API2, guildId: string, chann
             newName += chars.charAt(Math.floor(Math.random() * chars.length));
         }
     } else if (config.experiments.includes("random-channel-name")) {
-        const randomNames = Array.isArray(randomChannelNames) ? randomChannelNames : ["honeypot"]
+        const randomNames = Array.isArray(randomChannelNames) ? randomChannelNames : ["イ・hmhm-matidz"]
         newName = randomNames[Math.floor(Math.random() * randomNames.length)];
     }
 

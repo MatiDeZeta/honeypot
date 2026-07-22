@@ -4,14 +4,14 @@
     <img src="https://honeypot.riskymh.dev/honeypot.png" alt="Emoji de honeypot" width="84">
   </a>
   <br>
-  Bot de Discord Honeypot
+  Honeypot Discord Bot
 </h1>
 
 > Un bot de Discord que detecta y elimina automáticamente bots de spam al vigilar un canal dedicado `#honeypot`.
 
 ## Uso
 
-1. [**Invita el bot**](https://discord.com/oauth2/authorize?client_id=1450060292716494940) a tu servidor con los permisos adecuados (Banear miembros, Gestionar canales, etc.).
+1. [**Invita el bot**](https://discord.com/oauth2/authorize?client_id=1450060292716494940) a tu servidor con los permisos adecuados (banear miembros, gestionar canales, etc.).
 2. Al unirse, el bot creará un canal `#honeypot`, o puedes configurarlo con `/honeypot`.
 3. Configura el canal de registros, la acción (softban, baneo o silencio) y, si lo deseas, los roles exentos con el comando `/honeypot`.
 4. Asegúrate de que el rol más alto del bot esté por encima de cualquier rol autoasignable (de color o de mención).
@@ -71,7 +71,7 @@ Opciones que puedes activar para dificultar aún más a los bots [**ⓘ**](https
 ## Primeros pasos (desarrollo)
 
 - [Bun](https://bun.sh/) (v1.3+)
-- Token del bot de Discord (variable de entorno `DISCORD_TOKEN`)
+- Discord Bot Token (variable de entorno `DISCORD_TOKEN`)
 
 ```bash
 $ bun install

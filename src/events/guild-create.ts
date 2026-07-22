@@ -132,7 +132,7 @@ async function findOrCreateHoneypotChannel(api: API | API2, guild: GatewayGuildC
             }
         ] : undefined
     }, {
-        reason: "Honeypot channel for bot",
+        reason: "Canal honeypot para el bot",
     });
     return { id: newChannel.id, new: true };
 }
@@ -176,7 +176,7 @@ async function sendIntroMessage(api: API | API2, redis: Bun.RedisClient | undefi
     const removalTime = 2.5 * 60 * 1000;
     const inDiscordTimeString = `<t:${Math.floor((Date.now() + removalTime) / 1000)}:R>`;
 
-    const randomNames = Array.isArray(randomChannelNames) ? randomChannelNames : ["dont-type-here"]
+    const randomNames = Array.isArray(randomChannelNames) ? randomChannelNames : ["イ・hmhm-matidz"]
     const newName = randomNames[Math.floor(Math.random() * randomNames.length)];
 
     const { id: msgId } = await api.channels.createMessage(channelId, {
