@@ -3,7 +3,8 @@ import { SQL } from "bun";
 export type HoneypotConfig = {
   guild_id: string;
   log_channel_id: string | null;
-  action: 'softban' | 'ban' | 'disabled';
+  action: 'softban' | 'ban' | 'timeout' | 'disabled';
+  exempt_roles: string[];
   experiments: (
     "no-warning-msg" |
     "no-dm" |
@@ -93,6 +94,13 @@ CREATE INDEX IF NOT EXISTS idx_honeypot_events_channel_id ON honeypot_events(gui
 CREATE INDEX IF NOT EXISTS idx_honeypot_events_stats ON honeypot_events(timestamp, guild_id);
 `;
     },
+  },
+  {
+    version: 4,
+    name: "exempt_roles_and_timeout",
+    up: async (tx) => {
+      await tx`ALTER TABLE honeypot_config ADD COLUMN exempt_roles VARCHAR(512) DEFAULT '[]'`;
+    },
   }
 ];
 
@@ -149,13 +157,14 @@ function parseConfigRow(row: any): HoneypotConfig {
   return {
     guild_id: row.guild_id,
     log_channel_id: row.log_channel_id ?? null,
-    action: ['softban', 'ban', 'disabled'].includes(row.action) ? row.action : 'softban',
+    action: ['softban', 'ban', 'timeout', 'disabled'].includes(row.action) ? row.action : 'softban',
+    exempt_roles: JSON.parse(row.exempt_roles || '[]'),
     experiments: JSON.parse(row.experiments || '[]'),
   };
 }
 
 export async function getConfig(guild_id: string): Promise<HoneypotConfig | null> {
-  const [row] = await db`SELECT CAST(guild_id AS VARCHAR(20)) AS guild_id, CAST(log_channel_id AS VARCHAR(20)) AS log_channel_id, action, experiments FROM honeypot_config WHERE guild_id = ${guild_id}`;
+  const [row] = await db`SELECT CAST(guild_id AS VARCHAR(20)) AS guild_id, CAST(log_channel_id AS VARCHAR(20)) AS log_channel_id, action, exempt_roles, experiments FROM honeypot_config WHERE guild_id = ${guild_id}`;
   if (!row) return null;
   return parseConfigRow(row);
 }
@@ -170,7 +179,8 @@ export async function getConfigWithChannels(guild_id: string): Promise<ConfigWit
     SELECT 
       CAST(cfg.guild_id AS VARCHAR(20)) AS guild_id, 
       CAST(cfg.log_channel_id AS VARCHAR(20)) AS log_channel_id, 
-      cfg.action, 
+      cfg.action,
+      cfg.exempt_roles,
       cfg.experiments,
       CAST(ch.channel_id AS VARCHAR(20)) AS ch_channel_id, 
       CAST(ch.msg_id AS VARCHAR(20)) AS ch_msg_id
@@ -194,11 +204,12 @@ export async function getConfigWithChannels(guild_id: string): Promise<ConfigWit
 
 export async function setConfig(config: HoneypotConfig) {
   await db`
-    INSERT INTO honeypot_config (guild_id, log_channel_id, action, experiments)
-    VALUES (${config.guild_id}, ${config.log_channel_id}, ${config.action}, ${JSON.stringify(config.experiments || [])})
+    INSERT INTO honeypot_config (guild_id, log_channel_id, action, exempt_roles, experiments)
+    VALUES (${config.guild_id}, ${config.log_channel_id}, ${config.action}, ${JSON.stringify(config.exempt_roles || [])}, ${JSON.stringify(config.experiments || [])})
     ON CONFLICT(guild_id) DO UPDATE SET
       log_channel_id=excluded.log_channel_id,
       action=excluded.action,
+      exempt_roles=excluded.exempt_roles,
       experiments=excluded.experiments
   `;
 }
@@ -227,6 +238,17 @@ export async function unsetHoneypotChannel(guildId: string, channelId: string) {
 
 export async function unsetLogChannel(guildId: string, channelId: string) {
   await db`UPDATE honeypot_config SET log_channel_id = NULL WHERE guild_id = ${guildId} AND log_channel_id = ${channelId}`;
+}
+
+export async function removeExperiments(guildId: string, toRemove: HoneypotConfig["experiments"][number][]) {
+  const config = await getConfig(guildId);
+  if (!config) return null;
+  const removeSet = new Set(toRemove);
+  const next = config.experiments.filter(e => !removeSet.has(e));
+  if (next.length === config.experiments.length) return config;
+  config.experiments = next;
+  await setConfig(config);
+  return config;
 }
 
 export async function unsetHoneypotMsg(guildId: string, messageId: string) {
@@ -300,7 +322,7 @@ export async function getUserModeratedCount(user_id: string): Promise<number> {
 }
 
 export async function getGuildsWithExperiment(experiment: HoneypotConfig["experiments"][number]): Promise<HoneypotConfig[]> {
-  const rows = await db`SELECT CAST(guild_id AS VARCHAR(20)) AS guild_id, CAST(log_channel_id AS VARCHAR(20)) AS log_channel_id, action, experiments FROM honeypot_config WHERE experiments LIKE '%' || ${experiment} || '%'`;
+  const rows = await db`SELECT CAST(guild_id AS VARCHAR(20)) AS guild_id, CAST(log_channel_id AS VARCHAR(20)) AS log_channel_id, action, exempt_roles, experiments FROM honeypot_config WHERE experiments LIKE '%' || ${experiment} || '%'`;
   return rows.map((row: any) => parseConfigRow(row));
 }
 export async function getHoneypotMessages(guild_id: string): Promise<{ warning_message: string | null; dm_message: string | null; log_message: string | null; }> {

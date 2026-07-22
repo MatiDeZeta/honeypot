@@ -10,6 +10,7 @@ export function honeypotWarningMessage(
     ban: { text: 'un baneo inmediato', label: 'Baneos' },
     softban: { text: 'un softban', label: 'Expulsiones' },
     kick: { text: 'un softban', label: 'Expulsiones' },
+    timeout: { text: 'un silencio de 24 h', label: 'Silencios' },
     disabled: { text: 'ninguna acción (honeypot está desactivado)', label: 'Activaciones' }
   };
   const { text: actionText, label: labelText } = actionTextMap[action] || actionTextMap.ban!;
@@ -67,10 +68,11 @@ const pastTenseActionText = {
   ban: 'baneado',
   kick: 'expulsado',
   softban: 'expulsado',
-  disabled: '???está desactivado???'
+  timeout: 'silenciado',
+  disabled: 'marcado (honeypot desactivado)'
 } as const
 export function honeypotUserDMMessage(action: HoneypotConfig["action"], guildName: string, discoverableLink: string | undefined, link: string, reinviteUrl: string | null, isAdmin = false, customText?: string | null): RESTPostAPIChannelMessageJSONBody {
-  const actionText = pastTenseActionText[action] || '???acción desconocida???';
+  const actionText = pastTenseActionText[action] || 'moderado';
   const { text: messageText, imageUrls } = customText ? extractPossibleImages(customText) : { text: null, imageUrls: null };
   return {
     flags: MessageFlags.IsComponentsV2,
@@ -137,7 +139,7 @@ export const defaultHoneypotUserDMMessage = "## Honeypot activado\n\nHas sido **
 export const defaultHoneypotUserDMMessageReinvitePart = "\n\nCuando hayas resuelto cómo tu cuenta envió spam, puedes volver a unirte desde {{reinvite:link}}";
 
 export function logActionMessage(userId: string, honeypotChannelId: string, action: HoneypotConfig["action"], customText?: string | null, moderatedCount: number = 0): RESTPostAPIChannelMessageJSONBody {
-  const actionText = pastTenseActionText[action] || '???acción desconocida???';
+  const actionText = pastTenseActionText[action] || 'moderado';
   const text = customText
     ?.replace(/\{\{user:id\}\}/g, userId)
     .replace(/\{\{user(:ping|:mention)?\}\}/g, `<@${userId}>`)

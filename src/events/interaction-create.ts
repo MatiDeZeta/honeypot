@@ -34,6 +34,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     guild_id: guildId,
                     log_channel_id: null,
                     action: 'softban',
+                    exempt_roles: [],
                     experiments: []
                 };
                 const channels = result?.channels ?? [];
@@ -94,6 +95,20 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         },
                         {
                             type: ComponentType.Label,
+                            label: "Roles exentos",
+                            description: "Miembros con estos roles no serán sancionados (p. ej. staff)",
+                            component: {
+                                type: ComponentType.RoleSelect,
+                                custom_id: "exempt_roles",
+                                min_values: 0,
+                                max_values: 10,
+                                placeholder: "@Moderador",
+                                default_values: (config.exempt_roles ?? []).slice(0, 10).map(id => ({ id, type: SelectMenuDefaultValueType.Role })),
+                                required: false,
+                            }
+                        },
+                        {
+                            type: ComponentType.Label,
                             label: "Acción",
                             description: "¿Qué debe hacer el bot con el autor del mensaje?",
                             component: {
@@ -102,7 +117,8 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                                 options: [
                                     { label: "Softban (expulsión)", value: "softban", description: "Banea y desbanea para borrar la última 1 h de mensajes", default: config.action === "softban" || (config.action as any) === "kick" || !config.action },
                                     { label: "Baneo", value: "ban", description: "Banea permanentemente al usuario y también borra la última 1 h de mensajes", default: config.action === "ban" },
-                                    { label: "Desactivado", value: "disabled", /*description: "No hacer nada",*/ default: config.action === "disabled" }
+                                    { label: "Silencio (24 h)", value: "timeout", description: "Silencia al usuario 24 horas; permanece en el servidor", default: config.action === "timeout" },
+                                    { label: "Desactivado", value: "disabled", description: "No aplicar sanciones (solo registrar si hay canal de logs)", default: config.action === "disabled" }
                                 ],
                                 required: true,
                             }
@@ -110,7 +126,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         {
                             type: ComponentType.Label,
                             label: "Experimentos",
-                            // description: "Some optional experimental features to try out",
+                            description: "Funciones opcionales para mejorar la detección o el comportamiento del honeypot",
                             component: {
                                 type: ComponentType.StringSelect,
                                 custom_id: "honeypot_experiments",
@@ -133,6 +149,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     guild_id: guildId,
                     log_channel_id: null,
                     action: 'softban',
+                    exempt_roles: [],
                     experiments: []
                 }
                 let selectedChannelIds: string[] = [];
@@ -163,9 +180,15 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                             newConfig.log_channel_id = c.values[0]!;
                         }
                     }
+                    if (c.type === ComponentType.RoleSelect) {
+                        if (c.custom_id === "exempt_roles" && Array.isArray(c.values)) {
+                            newConfig.exempt_roles = c.values.slice(0, 10);
+                        }
+                    }
                     if (c.type === ComponentType.RadioGroup) {
                         if (c.custom_id === "honeypot_action" && c.value) {
-                            if (["kick", "ban", "disabled"].includes(c.value)) newConfig.action = c.value as any;
+                            if (c.value === "kick") newConfig.action = "softban";
+                            else if (["softban", "ban", "timeout", "disabled"].includes(c.value)) newConfig.action = c.value as HoneypotConfig["action"];
                         }
                     }
                     if (c.type === ComponentType.StringSelect) {
@@ -376,6 +399,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     guild_id: guildId,
                     log_channel_id: newConfig.log_channel_id,
                     action: newConfig.action,
+                    exempt_roles: newConfig.exempt_roles,
                     experiments: newConfig.experiments,
                 });
                 await db.setHoneypotChannels(guildId, selectedChannelIds.map(id => ({
@@ -387,8 +411,11 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
 
                 // best to be 100% accurate (ie edit from at right time where there is technically another channel chosen)
                 const allChannels = await db.getChannels(guildId);
+                const exemptSummary = newConfig.exempt_roles.length > 0
+                    ? `\n-# - Roles exentos: ${newConfig.exempt_roles.map(id => `<@&${id}>`).join(", ")}`
+                    : '';
                 await interactionReply({
-                    content: `¡Configuración de honeypot actualizada!\n-# - Canales: ${allChannels.map(c => `<#${c.channel_id}>`).join(", ")}\n-# - Canal de registros: ${newConfig.log_channel_id ? `<#${newConfig.log_channel_id}>` : '*(Sin configurar)*'}\n-# - Acción: **${newConfig.action}**${newConfig.experiments.length > 0 ? `\n-# - Experimentos: ${newConfig.experiments.map(e => `\`${e}\``).join(", ")}` : ''}`,
+                    content: `¡Configuración de honeypot actualizada!\n-# - Canales: ${allChannels.map(c => `<#${c.channel_id}>`).join(", ")}\n-# - Canal de registros: ${newConfig.log_channel_id ? `<#${newConfig.log_channel_id}>` : '*(Sin configurar)*'}\n-# - Acción: **${newConfig.action}**${exemptSummary}${newConfig.experiments.length > 0 ? `\n-# - Experimentos: ${newConfig.experiments.map(e => `\`${e}\``).join(", ")}` : ''}`,
                     allowed_mentions: {},
                 });
                 if (redis) setSubscribedChannelCache(guildId, allChannels.map(c => c.channel_id), redis);
@@ -1041,7 +1068,7 @@ function validateConfigPermissions(
     appPermissions: string,
 ): string[] {
     const errors: string[] = [];
-    const ch = (id: string) => channelResolvable?.[id]; 8
+    const ch = (id: string) => channelResolvable?.[id];
     const need = (ok: boolean, msg: string) => { if (!ok) errors.push(msg); };
     const issue = (msg: string) => errors.push(msg);
 
@@ -1102,6 +1129,16 @@ function validateConfigPermissions(
             `Necesito el permiso Banear miembros para establecer la acción de honeypot en “${config.action}”.`);
     }
 
+    if (config.action === "timeout" || config.experiments.includes("timeout-first")) {
+        const reason = config.action === "timeout"
+            ? `establecer la acción de honeypot en “timeout”`
+            : `activar el experimento “Aplicar silencio primero”`;
+        need(!memberPermissions || hasPermission(BigInt(memberPermissions), PermissionFlagsBits.ModerateMembers),
+            `Necesitas el permiso Silenciar miembros para ${reason}.`);
+        need(hasPermission(BigInt(appPermissions), PermissionFlagsBits.ModerateMembers),
+            `Necesito el permiso Silenciar miembros para ${reason}.`);
+    }
+
     if (config.experiments.includes("reinvite") && channels[0]!) {
         const inviteCh = ch(channels[0]);
         need(!inviteCh || hasPermission(BigInt(inviteCh.permissions), PermissionFlagsBits.CreateInstantInvite),
@@ -1110,11 +1147,8 @@ function validateConfigPermissions(
             `Necesito el permiso Crear invitación en <#${inviteCh?.id}> para activar el experimento “Reinvitar”.`);
     }
 
-    if (config.experiments.includes("timeout-first")) {
-        need(!memberPermissions || hasPermission(BigInt(memberPermissions), PermissionFlagsBits.ModerateMembers),
-            `Necesitas el permiso Silenciar miembros para activar el experimento “Aplicar silencio primero”.`);
-        need(hasPermission(BigInt(appPermissions), PermissionFlagsBits.ModerateMembers),
-            `Necesito el permiso Silenciar miembros para activar el experimento “Aplicar silencio primero”.`);
+    if (config.action === "timeout" && config.experiments.includes("timeout-first")) {
+        issue(`La acción “Silencio” y el experimento “Aplicar silencio primero” son mutuamente excluyentes.`);
     }
 
     if (config.experiments.includes("no-dm") && config.experiments.includes("reinvite")) {

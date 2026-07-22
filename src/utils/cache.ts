@@ -162,3 +162,23 @@ export const removeFromEnsureMsgDeleteQueue = (entries: string[], redis?: Bun.Re
     }
   }
 }
+
+/** Count repeated experiment/log failures; returns null when Redis is unavailable. */
+const tenDaysSeconds = 10 * daySeconds;
+const FAIL_THRESHOLD = 10;
+
+export async function incrExperimentFailure(
+  guildId: string,
+  key: string,
+  redis?: Bun.RedisClient
+): Promise<number | null> {
+  if (!redis) return null;
+  const redisKey = `exp_fail:${guildId}:${key}`;
+  const count = await redis.incr(redisKey);
+  if (count === 1) await redis.expire(redisKey, tenDaysSeconds);
+  return count;
+}
+
+export function experimentFailureReachedThreshold(count: number | null): boolean {
+  return count !== null && count >= FAIL_THRESHOLD;
+}

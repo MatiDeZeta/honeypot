@@ -83,7 +83,10 @@ const onMessage = async (
             return;
         }
 
-        if (messageId && HAS_MESSAGE_INTENT && config.experiments.includes("ensure-msg-delete") && config.action !== 'disabled') {
+        if (messageId && config.action !== 'disabled' && (
+            config.action === 'timeout' ||
+            (HAS_MESSAGE_INTENT && config.experiments.includes("ensure-msg-delete"))
+        )) {
             deleteTriggeringMessage(api, channelId, messageId);
         } else if (messageId) {
             emojiReactAcknowledgement(api, channelId, messageId);
@@ -104,7 +107,7 @@ const onMessage = async (
         const timeoutPromise = maybeTimeoutMember(api, guildId, userId, config, preActionAbort.signal)
 
         const guildInfo = await getGuildInfo(api, guildId, AbortSignal.timeout(500), redis).catch(() => null);
-        const permissionSkip = getPermissionSkip(guildInfo, userId, userRoles);
+        const permissionSkip = getPermissionSkip(guildInfo, userId, userRoles, config);
 
         const customMessages = await db.getHoneypotMessages(guildId);
         const dmMessage = maybeDmMember(api, db, guildId, channelId, userId, messageId, config, guildInfo, permissionSkip, customMessages?.dm_message, preActionAbort.signal, redis)
@@ -188,6 +191,14 @@ async function executeAction(
                     return "unban";
                 }
             }
+        } else if (config.action === 'timeout') {
+            await api.guilds.editMember(
+                guildId,
+                userId,
+                { communication_disabled_until: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
+                { reason: "Triggered honeypot -> timeout 24h" }
+            );
+            Bun.sleep(150).then(() => preActionAbort.abort());
         } else if (config.action === 'disabled') {
             return false;
         } else {
@@ -211,10 +222,12 @@ async function executeAction(
 function getPermissionSkip(
     guildInfo: { ownerId: string; adminRoles?: string[] } | null,
     userId: string,
-    userRoles: string[]
-): "owner" | "admin" | false {
+    userRoles: string[],
+    config: HoneypotConfig
+): "owner" | "admin" | "exempt" | false {
     if (guildInfo?.ownerId === userId) return "owner";
     if (guildInfo?.adminRoles?.some(role => userRoles.includes(role))) return "admin";
+    if (config.exempt_roles?.some(role => userRoles.includes(role))) return "exempt";
     return false;
 }
 
@@ -327,7 +340,7 @@ async function maybeForwardMessage(api: API | API2, guildId: string, channelId: 
 }
 
 function maybeTimeoutMember(api: API | API2, guildId: string, userId: string, config: HoneypotConfig, preActionAbort: AbortSignal) {
-    if (!config.experiments.includes("timeout-first")) return;
+    if (config.action === "timeout" || !config.experiments.includes("timeout-first")) return;
     return api.guilds.editMember(guildId, userId,
         { communication_disabled_until: new Date(Date.now() + 3_600_000).toISOString() },
         { reason: `Triggered honeypot -> timeout for 1hr before ${config.action}`, signal: preActionAbort }
@@ -355,7 +368,7 @@ async function maybeDmMember(
     messageId: string | undefined,
     config: HoneypotConfig,
     guild: Awaited<ReturnType<typeof getGuildInfo>> | null,
-    permissionSkip: "owner" | "admin" | false,
+    permissionSkip: "owner" | "admin" | "exempt" | false,
     customMessage?: string | null,
     preActionAbort?: AbortSignal,
     redis?: Bun.RedisClient
@@ -408,7 +421,7 @@ async function logMessage(
     customMessage: string | null,
     moderatedCount: number,
     failed: false | "permissions" | "admin" | "unban" | true,
-    permissionSkip: "owner" | "admin" | false,
+    permissionSkip: "owner" | "admin" | "exempt" | false,
 ) {
     if (!config.log_channel_id && !permissionSkip && !failed) return;
 
@@ -419,8 +432,15 @@ async function logMessage(
                 allowed_mentions: { users: [userId] },
             });
         } else if (permissionSkip) {
+            const skipReason =
+                permissionSkip === "owner" ? "es el **propietario del servidor**, así que no puedo"
+                    : permissionSkip === "admin" ? "es un **administrador del servidor**, así que no voy a"
+                        : "tiene un **rol exento**, así que no voy a";
+            const permHint = config.action === "timeout"
+                ? "el permiso **silenciar miembros**"
+                : "el permiso **banear miembros**";
             await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
-                content: `⚠️ El usuario <@${userId}> activó el honeypot, pero ${permissionSkip === "owner" ? "es el **propietario del servidor**, así que no puedo" : "es un **administrador del servidor**, así que no voy a"} aplicarle la acción \`${config.action}\`.\n-# En cualquier caso, **asegúrate de que mi rol esté más arriba** que el rol más alto de los demás y de que tenga el permiso **banear miembros** para poder aplicar \`${config.action}\` en casos reales.`,
+                content: `⚠️ El usuario <@${userId}> activó el honeypot, pero ${skipReason} aplicarle la acción \`${config.action}\`.\n-# En cualquier caso, **asegúrate de que mi rol esté más arriba** que el rol más alto de los demás y de que tenga ${permHint} para poder aplicar \`${config.action}\` en casos reales.`,
                 allowed_mentions: { users: [userId] },
             });
         } else if (failed === "unban" && config.action === "softban") {
@@ -429,6 +449,9 @@ async function logMessage(
                 allowed_mentions: { users: [userId] },
             });
         } else if (failed === "permissions") {
+            const permHint = config.action === "timeout"
+                ? "el permiso **silenciar miembros**"
+                : "el permiso **banear miembros**";
             await api.channels.createMessage(config.log_channel_id || matchedChannel.channel_id, {
                 flags: MessageFlags.IsComponentsV2,
                 components: [
@@ -440,7 +463,7 @@ async function logMessage(
                         type: ComponentType.Section,
                         components: [{
                             type: ComponentType.TextDisplay,
-                            content: `-# Revisa mis permisos para **asegurarte de que mi rol esté más arriba** que su rol más alto y de que tenga el permiso **banear miembros**.`,
+                            content: `-# Revisa mis permisos para **asegurarte de que mi rol esté más arriba** que su rol más alto y de que tenga ${permHint}.`,
                         }],
                         accessory: {
                             type: ComponentType.Button,

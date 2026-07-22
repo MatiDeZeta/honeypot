@@ -59,6 +59,7 @@ const handler: EventHandler<GatewayDispatchEvents.GuildCreate> = {
                 guild_id: guild.id,
                 log_channel_id: null,
                 action: 'softban',
+                exempt_roles: [],
                 experiments: [],
             });
             if (channelId) {

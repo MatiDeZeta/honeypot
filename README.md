@@ -13,10 +13,10 @@
 
 1. [**Invite the bot**](https://discord.com/oauth2/authorize?client_id=1450060292716494940) to your server with appropriate permissions (Ban Members, Manage Channels, etc).
 2. The bot will create a `#honeypot` channel on join, or you can set it up with `/honeypot`.
-3. Configure the admin log channel and action (kick or ban) using the `/honeypot` command.
+3. Configure the admin log channel, action (softban, ban, or timeout), and optional exempt roles using the `/honeypot` command.
 4. Ensure the bot’s highest role is above any self-assignable (color/ping) roles.
-5. Any user posting in the honeypot channel will be banned or removed, and the action will be logged.
-> [**ⓘ**](https://honeypot.riskymh.dev/docs/setup-guide) **Note:** Kick is default and is a softban (bans & unbans) so Discord deletes their immediate messages 
+5. Any user posting in the honeypot channel will be banned, timed out, or removed, and the action will be logged.
+> [**ⓘ**](https://honeypot.riskymh.dev/docs/setup-guide) **Note:** Softban is default (bans & unbans) so Discord deletes their immediate messages. Timeout silences for 24h without removing them.
 
 <details>
 <summary><strong>Extra info</strong></summary>
@@ -33,22 +33,32 @@ Options you can enable to avoid the bots better [**ⓘ**](https://honeypot.risky
 
 1. 💡 **Forward Message:** Send the incriminating message to the log channel.
 2. **Reinvite:** In DM message include a link to be able to rejoin
-4. **No Warning Msg:** Don’t include a warning message in the #honeypot channel
-5. **No DM:** Don’t DM the user that they triggered the honeypot
-6. **Channel Warmer:** Keep the honeypot channel active (every day)
-7. **Random Channel Name:** Randomize the honeypot channel name (every day)
-8. **Random Channel Name (chaos):** Randomize the honeypot channel name with random characters (every day)
-9. ⚙️ **Recreate Channel:** Remake the honeypot channel (every day)
-10. **Timeout First:** Before banning/kicking, timeout user for 1hr (will persist when they rejoin)
-11. 💡 **Only More Recent Delete:** Instead of deleting last 1hr, only do 15min
-12. 💡 **Many Honeypots:** Create multiple honeypot channels to increase chances of usage
-13. ⚙️ **Ensure Message Deletion:** Search & delete leftover messages from moderated users 2 min after moderation
+3. **No Warning Msg:** Don’t include a warning message in the #honeypot channel
+4. **No DM:** Don’t DM the user that they triggered the honeypot
+5. **Channel Warmer:** Keep the honeypot channel active (every day)
+6. **Random Channel Name:** Randomize the honeypot channel name (every day)
+7. **Random Channel Name (chaos):** Randomize the honeypot channel name with random characters (every day)
+8. ⚙️ **Recreate Channel:** Remake the honeypot channel (every day)
+9. **Timeout First:** Before banning/kicking, timeout user for 1hr (will persist when they rejoin)
+10. 💡 **Only More Recent Delete:** Instead of deleting last 1hr, only do 15min
+11. 💡 **Many Honeypots:** Create multiple honeypot channels to increase chances of usage
+12. ⚙️ **Ensure Message Deletion:** Search & delete leftover messages from moderated users 2 min after moderation
 
 <sub>
 
 **Legend:** 💡 recommended features · ⚙️ advanced, only use if you're seeing issues (may need 1+ bans to see)
 
 </sub>
+
+### Configuration extras
+
+- **Exempt roles** — members with these roles bypass the honeypot (staff testing without Administrator).
+- **Actions** — softban (default), ban, timeout (24h silence), or disabled.
+
+### Suggested next features
+
+1. **Broader leftover purge** — cross-channel cleanup after a catch (extends ensure-msg-delete).
+2. **Opt-in shared catchlist** — optional sync of previously caught user IDs (privacy-sensitive).
 
 ### Tips to Maximize Honeypot Bot’s Effectiveness
 

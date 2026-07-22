@@ -8,7 +8,7 @@ export const commandsPayload: RESTPutAPIApplicationCommandsJSONBody = [
         type: ApplicationCommandType.ChatInput,
         options: [],
         default_member_permissions:
-            (PermissionFlagsBits.ManageGuild | PermissionFlagsBits.BanMembers | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels).toString(),
+            (PermissionFlagsBits.ManageGuild | PermissionFlagsBits.BanMembers | PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels).toString(),
         integration_types: [ApplicationIntegrationType.GuildInstall],
         contexts: [InteractionContextType.Guild],
     },
@@ -19,7 +19,7 @@ export const commandsPayload: RESTPutAPIApplicationCommandsJSONBody = [
         type: ApplicationCommandType.ChatInput,
         options: [],
         default_member_permissions:
-            (PermissionFlagsBits.ManageGuild | PermissionFlagsBits.BanMembers | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels).toString(),
+            (PermissionFlagsBits.ManageGuild | PermissionFlagsBits.BanMembers | PermissionFlagsBits.ModerateMembers | PermissionFlagsBits.ManageMessages | PermissionFlagsBits.ManageChannels).toString(),
         integration_types: [ApplicationIntegrationType.GuildInstall],
         contexts: [InteractionContextType.Guild],
     },

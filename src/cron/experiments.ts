@@ -8,7 +8,12 @@ import { DiscordAPIError } from "@discordjs/rest";
 import { styleText } from "node:util";
 import type { HoneypotConfig } from "../utils/db";
 import { honeypotWarningMessage } from "../utils/messages";
-import { removeGuildSubscribedChannelCache, setSubscribedChannelCache } from "../utils/cache";
+import {
+    experimentFailureReachedThreshold,
+    incrExperimentFailure,
+    removeGuildSubscribedChannelCache,
+    setSubscribedChannelCache,
+} from "../utils/cache";
 
 function shardId(id: string, total: number): number {
     let hash = 5381;
@@ -16,6 +21,46 @@ function shardId(id: string, total: number): number {
         hash = ((hash << 5) + hash + id.charCodeAt(i)) | 0;
     }
     return (hash >>> 0) % total;
+}
+
+type ExperimentKey = HoneypotConfig["experiments"][number];
+
+async function handlePermissionFailure(
+    api: API | API2,
+    db: typeof import("../utils/db"),
+    redis: Bun.RedisClient | undefined,
+    config: HoneypotConfig,
+    experiments: ExperimentKey[],
+    label: string,
+) {
+    const count = await incrExperimentFailure(config.guild_id, experiments.join("+"), redis);
+    if (!experimentFailureReachedThreshold(count)) return;
+
+    const updated = await db.removeExperiments(config.guild_id, experiments);
+    if (!updated) return;
+    config.experiments = updated.experiments;
+    console.log(styleText("dim", `Disabled experiment(s) ${experiments.join(", ")} for guild ${config.guild_id} after repeated permission failures`));
+
+    if (config.log_channel_id) {
+        await api.channels.createMessage(config.log_channel_id, {
+            content: `⚠️ Se desactivó el experimento "${label}" tras demasiados fallos de permisos. Vuelve a activarlo con \`/honeypot\` cuando hayas corregido los permisos.`,
+            allowed_mentions: {},
+        }).catch(() => { });
+    }
+}
+
+async function handleLogChannelFailure(
+    db: typeof import("../utils/db"),
+    redis: Bun.RedisClient | undefined,
+    config: HoneypotConfig,
+) {
+    if (!config.log_channel_id) return;
+    const count = await incrExperimentFailure(config.guild_id, "log-channel", redis);
+    if (!experimentFailureReachedThreshold(count)) return;
+
+    await db.unsetLogChannel(config.guild_id, config.log_channel_id);
+    console.log(styleText("dim", `Cleared log channel for guild ${config.guild_id} after repeated permission failures`));
+    config.log_channel_id = null;
 }
 
 export async function channelWarmerExperiment(api: API | API2, guildId: string, channelId: string) {
@@ -131,7 +176,7 @@ const cron: Cron = {
                             db.unsetHoneypotChannel(config.guild_id, channel.channel_id);
                         } else if (discordErrorCode === RESTJSONErrorCodes.MissingAccess || discordErrorCode === RESTJSONErrorCodes.MissingPermissions) {
                             console.log(styleText("dim", `Channel warmer experiment execution failed: ${err}`));
-                            // todo count these and if like 10 in 10 days (due to using expire on hincr in redis), then just remove the experiment from guild)
+                            await handlePermissionFailure(api, db, redis, config, ["channel-warmer"], "Mantener canal activo");
                         } else {
                             console.log(`Channel warmer experiment execution failed: ${err}`);
                         }
@@ -141,11 +186,11 @@ const cron: Cron = {
                             await api.channels.createMessage(config.log_channel_id, {
                                 content: `⚠️ Hubo un problema al enviar un mensaje al canal <#${channel.channel_id}> para el experimento "Mantener canal activo". Revisa mis permisos.`,
                                 allowed_mentions: {},
-                            }).catch(err => {
+                            }).catch(async err => {
                                 const discordErrorCode = err instanceof DiscordAPIError ? err.code : null;
                                 if (discordErrorCode === RESTJSONErrorCodes.MissingAccess || discordErrorCode === RESTJSONErrorCodes.MissingPermissions) {
                                     console.log(styleText("dim", `Failed to send failed message for channel warmer experiment: ${err}`));
-                                    // todo: if this happens enough times then remove the log channel from the config or something
+                                    await handleLogChannelFailure(db, redis, config);
                                 } else if (config.log_channel_id && discordErrorCode === RESTJSONErrorCodes.UnknownChannel) {
                                     db.unsetLogChannel(config.guild_id, config.log_channel_id);
                                     console.log(styleText("dim", `Failed to send failed message for channel warmer experiment: ${err}`));
@@ -181,7 +226,9 @@ const cron: Cron = {
                             db.unsetHoneypotChannel(config.guild_id, channel.channel_id);
                         } else if (discordErrorCode === RESTJSONErrorCodes.MissingAccess || discordErrorCode === RESTJSONErrorCodes.MissingPermissions) {
                             console.log(styleText("dim", `Random channel name experiment execution failed: ${err}`));
-                            // todo count these and if like 10 in 10 days (due to using expire on hincr in redis), then just remove the experiment from guild)
+                            const toRemove: ExperimentKey[] = ["random-channel-name"];
+                            if (config.experiments.includes("random-channel-name-chaos")) toRemove.push("random-channel-name-chaos");
+                            await handlePermissionFailure(api, db, redis, config, toRemove, "Nombre aleatorio de canal");
                         } else {
                             console.log(`Random channel name experiment execution failed: ${err}`);
                         }
@@ -192,11 +239,11 @@ const cron: Cron = {
                             await api.channels.createMessage(config.log_channel_id || channel.channel_id, {
                                 content: `⚠️ Hubo un problema al actualizar el canal <#${channel.channel_id}> para el experimento "Nombre aleatorio de canal". Revisa mis permisos.`,
                                 allowed_mentions: {},
-                            }).catch(err => {
+                            }).catch(async err => {
                                 const discordErrorCode = err instanceof DiscordAPIError ? err.code : null;
                                 if (discordErrorCode === RESTJSONErrorCodes.MissingAccess || discordErrorCode === RESTJSONErrorCodes.MissingPermissions) {
                                     console.log(styleText("dim", `Failed to send failed message for random channel name experiment: ${err}`));
-                                    // todo: if this happens enough times then remove the log channel from the config or something
+                                    await handleLogChannelFailure(db, redis, config);
                                 } else if (config.log_channel_id && discordErrorCode === RESTJSONErrorCodes.UnknownChannel) {
                                     db.unsetLogChannel(config.guild_id, config.log_channel_id);
                                     console.log(styleText("dim", `Failed to send failed message for random channel name experiment: ${err}`));
@@ -230,6 +277,7 @@ const cron: Cron = {
                             db.unsetHoneypotChannel(config.guild_id, channel.channel_id);
                         } else if (discordErrorCode === RESTJSONErrorCodes.MissingAccess || discordErrorCode === RESTJSONErrorCodes.MissingPermissions) {
                             console.log(styleText("dim", `Channel recreate experiment execution failed: ${err}`));
+                            await handlePermissionFailure(api, db, redis, config, ["recreate-channel"], "Recrear canal");
                         } else {
                             console.log(`Channel recreate experiment execution failed: ${err}`);
                         }
@@ -237,10 +285,11 @@ const cron: Cron = {
                         await api.channels.createMessage(config.log_channel_id || channel.channel_id, {
                             content: `⚠️ Hubo un problema al recrear el canal <#${channel.channel_id}> para el experimento "Recrear canal". Revisa mis permisos: un problema común son sobrescrituras de permisos que el bot podría no tener para crearse como miembro.`,
                             allowed_mentions: {},
-                        }).catch(err => {
+                        }).catch(async err => {
                             const discordErrorCode = err instanceof DiscordAPIError ? err.code : null;
                             if (discordErrorCode === RESTJSONErrorCodes.MissingAccess || discordErrorCode === RESTJSONErrorCodes.MissingPermissions) {
                                 console.log(styleText("dim", `Failed to send failed message for channel recreate experiment: ${err}`));
+                                await handleLogChannelFailure(db, redis, config);
                             } else if (config.log_channel_id && discordErrorCode === RESTJSONErrorCodes.UnknownChannel) {
                                 db.unsetLogChannel(config.guild_id, config.log_channel_id);
                                 console.log(styleText("dim", `Failed to send failed message for channel recreate experiment: ${err}`));
