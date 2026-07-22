@@ -54,7 +54,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                     { label: "Sin MD", value: "no-dm", description: "No envía MD al usuario que activó el honeypot", default: config.experiments.includes("no-dm") },
                     { label: "Nombre aleatorio de canal (caos)", value: "random-channel-name-chaos", description: "Aleatoriza el nombre del canal honeypot con caracteres aleatorios (cada día)", default: config.experiments.includes("random-channel-name-chaos") },
                     hasHoneypotHistory && { label: "⚙️ Recrear canal", value: "recreate-channel", description: "Recrea el canal honeypot (cada día): el experimento puede retirarse y los mensajes no se conservan", default: config.experiments.includes("recreate-channel") },
-                    { label: "💡 Varios honeypots", value: "many-honeypots", description: "Permite crear varios canales honeypot; debes enviar el modal y ejecutar /honeypot otra vez para configurarlos", default: config.experiments.includes("many-honeypots") },
+                    { label: "💡 Varios honeypots", value: "many-honeypots", description: "Permite crear varios canales honeypot; reejecuta /honeypot para configurarlos", default: config.experiments.includes("many-honeypots") },
                     HAS_MESSAGE_INTENT && hasHoneypotHistory && { label: "⚙️ Asegurar borrado de mensajes (solo si hay problemas)", value: "ensure-msg-delete", description: "Busca y borra mensajes residuales de usuarios moderados 2 min después de la moderación.", default: config.experiments.includes("ensure-msg-delete") },
                 ] satisfies (APISelectMenuOption | false)[]).filter(e => !!e);
 
@@ -505,7 +505,7 @@ const handler: EventHandler<GatewayDispatchEvents.InteractionCreate> = {
                         {
                             type: ComponentType.Label,
                             label: "Restablecer todos los mensajes",
-                            description: "Nada de lo que cambies aquí se guardará. Esto restablecerá todos los mensajes a sus valores predeterminados.",
+                            description: "No se guardará nada aquí. Restablece todos los mensajes a sus valores predeterminados.",
                             component: {
                                 type: ComponentType.Checkbox,
                                 custom_id: "reset_messages",
